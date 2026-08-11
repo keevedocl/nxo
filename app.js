@@ -1,584 +1,115 @@
-const STORAGE_KEY = "nexo-data-v1";
-
-const defaultData = {
-  profile: { name: "Tú" },
-  courses: [],
-  classes: [],
-  tasks: [],
-  events: [],
-  budget: { total: 0 },
-  expenses: [],
-  workouts: [],
-  shopping: []
+const STORAGE_KEY="nexo-pro-data-v1";
+const todayISO=()=>{const d=new Date();const l=new Date(d.getTime()-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10)};
+const defaultData={
+ profile:{name:"Jugador",skin:"🙂",xp:0,level:1,coins:0,streak:0,lastActive:"",title:"Aprendiz"},
+ courses:[],classes:[],tasks:[],events:[],study:[],habits:[],
+ budget:{total:0},expenses:[],workouts:[],shopping:[],
+ health:{water:{},sleep:{},energy:50,mood:50},
+ game:{unlockedSkins:["🙂"],achievements:[],missions:{}}
 };
+const skins=[
+ {emoji:"🙂",name:"Base",level:1},{emoji:"😎",name:"Cool",level:2},{emoji:"🧠",name:"Cerebro",level:3},
+ {emoji:"⚡",name:"Volt",level:4},{emoji:"🥷",name:"Ninja",level:5},{emoji:"👑",name:"Rey",level:7},
+ {emoji:"🦾",name:"Cyborg",level:9},{emoji:"🧙",name:"Mago",level:12},{emoji:"🐉",name:"Dragón",level:15}
+];
+const rewards=[
+ {level:2,text:"Skin Cool 😎"},{level:3,text:"Skin Cerebro 🧠"},{level:4,text:"Skin Volt ⚡"},
+ {level:5,text:"Skin Ninja 🥷 + título Disciplinado"},{level:7,text:"Skin Rey 👑"},
+ {level:9,text:"Skin Cyborg 🦾"},{level:12,text:"Skin Mago 🧙"},{level:15,text:"Skin Dragón 🐉 + título Leyenda"}
+];
+let data=loadData(),currentTaskFilter="all",focusInterval=null,focusSeconds=1500,gameActive=false,gameTimer=null,gameScore=0;
 
-let data = loadData();
-let currentTaskFilter = "all";
+function loadData(){try{const r=localStorage.getItem(STORAGE_KEY);return r?Object.assign(structuredClone(defaultData),JSON.parse(r)):structuredClone(defaultData)}catch{return structuredClone(defaultData)}}
+function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));renderAll()}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function money(n){return new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0}).format(Number(n||0))}
+function dateOnly(d){return new Date(d+"T12:00:00")}
+function formatDate(d){return new Intl.DateTimeFormat("es-CL",{day:"2-digit",month:"short"}).format(new Date(d))}
+function daysUntil(s){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((dateOnly(s)-t)/86400000)}
+function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function openModal(h){document.getElementById("modal").innerHTML=h;document.getElementById("modalBackdrop").classList.remove("hidden")}
+function closeModal(){document.getElementById("modalBackdrop").classList.add("hidden");document.getElementById("modal").innerHTML=""}
+function neededXp(level){return 100+(level-1)*50}
+function rankFor(level){if(level>=15)return"Leyenda";if(level>=10)return"Maestro";if(level>=7)return"Elite";if(level>=5)return"Disciplinado";if(level>=3)return"Constante";return"Novato"}
+function addXP(amount,reason=""){data.profile.xp+=amount;data.profile.coins+=Math.max(1,Math.floor(amount/4));let leveled=false;while(data.profile.xp>=neededXp(data.profile.level)){data.profile.xp-=neededXp(data.profile.level);data.profile.level++;leveled=true;unlockForLevel(data.profile.level)}data.profile.title=rankFor(data.profile.level);checkAchievements();saveData();if(leveled) setTimeout(()=>alert(`¡Subiste al nivel ${data.profile.level}!`),50)}
+function unlockForLevel(level){skins.filter(s=>s.level<=level).forEach(s=>{if(!data.game.unlockedSkins.includes(s.emoji))data.game.unlockedSkins.push(s.emoji)})}
+function checkAchievements(){const a=data.game.achievements;const add=(id)=>{if(!a.includes(id))a.push(id)};if(data.tasks.filter(t=>t.done).length>=1)add("firstTask");if(data.tasks.filter(t=>t.done).length>=10)add("tenTasks");if(data.study.reduce((s,x)=>s+Number(x.minutes||0),0)>=300)add("study300");if(data.workouts.length>=5)add("gym5");if(data.profile.level>=5)add("level5");if(data.profile.streak>=7)add("streak7")}
+function markActive(){const today=todayISO();if(data.profile.lastActive===today)return;const y=new Date();y.setDate(y.getDate()-1);const yi=new Date(y.getTime()-y.getTimezoneOffset()*60000).toISOString().slice(0,10);data.profile.streak=data.profile.lastActive===yi?data.profile.streak+1:1;data.profile.lastActive=today;localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+markActive();
 
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...structuredClone(defaultData), ...JSON.parse(raw) } : structuredClone(defaultData);
-  } catch {
-    return structuredClone(defaultData);
-  }
-}
+function navTo(screen){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(screen+"Screen").classList.add("active");document.querySelectorAll(".nav-item[data-screen]").forEach(b=>b.classList.toggle("active",b.dataset.screen===screen));const titles={home:"NEXO",university:"Universidad",tasks:"Tareas",plan:"Plan",life:"Vida",game:"NEXO Quest"};document.getElementById("screenTitle").textContent=titles[screen]||"NEXO"}
+document.querySelectorAll(".nav-item[data-screen]").forEach(b=>b.onclick=()=>navTo(b.dataset.screen));
+document.addEventListener("click",e=>{const t=e.target.closest("[data-nav]");if(t)navTo(t.dataset.nav)});
+document.getElementById("floatingTasks").onclick=()=>navTo("tasks");
+document.getElementById("modalBackdrop").onclick=e=>{if(e.target.id==="modalBackdrop")closeModal()};
 
-function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  renderAll();
-}
+function renderClock(){const n=new Date();document.getElementById("heroTime").textContent=n.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("es-CL",{weekday:"long",day:"numeric",month:"long"}).format(n);const h=n.getHours();document.getElementById("heroMessage").textContent=h<10?"Empieza con algo pequeño y suma progreso.":h<14?"Aprovecha la mañana para lo importante.":h<19?"Todavía queda bastante día para avanzar.":"Cierra pendientes y deja mañana preparado."}
+function renderProfile(){const p=data.profile;["profileAvatar","topAvatar","gameAvatar"].forEach(id=>document.getElementById(id).textContent=p.skin);document.getElementById("profileName").textContent=p.name;document.getElementById("gameName").textContent=p.name;document.getElementById("levelBadge").textContent=`Nivel ${p.level}`;document.getElementById("gameLevelBadge").textContent=`Nivel ${p.level}`;document.getElementById("rankText").textContent=p.title;document.getElementById("characterTitle").textContent=p.title;document.getElementById("xpText").textContent=`${p.xp} / ${neededXp(p.level)} XP`;document.getElementById("xpBar").style.width=`${Math.min(100,p.xp/neededXp(p.level)*100)}%`;document.getElementById("streakText").textContent=`🔥 ${p.streak} días`;document.getElementById("nextRewardText").textContent=`Próxima recompensa al nivel ${p.level+1}`;document.getElementById("coinCount").textContent=p.coins}
+function taskCard(t){const due=t.date?daysUntil(t.date):null;return `<div class="item"><div class="item-row"><button class="check ${t.done?"done":""}" onclick="toggleTask('${t.id}')"></button><div class="item-main"><div class="item-title ${t.done?"done-text":""}">${esc(t.title)}</div><div class="item-sub">${esc(t.course||"Personal")}</div><div class="badges">${t.date?`<span class="badge ${due<0?"urgent":due===0?"warn":""}">${due<0?"Atrasada":due===0?"Hoy":formatDate(t.date)}</span>`:""}<span class="badge">${esc(t.priority||"Media")}</span></div></div><div class="item-actions"><button class="mini-btn" onclick="editTask('${t.id}')">✎</button><button class="mini-btn" onclick="deleteTask('${t.id}')">×</button></div></div></div>`}
+function renderHome(){const pending=data.tasks.filter(t=>!t.done);document.getElementById("pendingCount").textContent=`${pending.length} tareas`;const rem=data.budget.total-data.expenses.reduce((s,e)=>s+Number(e.amount||0),0);document.getElementById("moneyAvailable").textContent=money(rem);const d=new Date().getDay(),hh=new Date().toTimeString().slice(0,5),tc=data.classes.filter(c=>Number(c.day)===d).sort((a,b)=>a.start.localeCompare(b.start)),nc=tc.find(c=>c.start>=hh)||tc[0];document.getElementById("nextClass").textContent=nc?`${nc.name} · ${nc.start}`:"Sin clases";const exams=data.courses.flatMap(c=>(c.assessments||[]).map(a=>({...a,course:c.name}))).filter(a=>a.date&&daysUntil(a.date)>=0).sort((a,b)=>dateOnly(a.date)-dateOnly(b.date));document.getElementById("nextExam").textContent=exams[0]?`${exams[0].course} · ${formatDate(exams[0].date)}`:"Sin evaluaciones";const priorities=[...pending].sort((a,b)=>({Alta:0,Media:1,Baja:2}[a.priority]-({Alta:0,Media:1,Baja:2}[b.priority])||dateOnly(a.date||"2999-01-01")-dateOnly(b.date||"2999-01-01"))).slice(0,4);document.getElementById("priorityList").innerHTML=priorities.length?priorities.map(taskCard).join(""):`<div class="empty">No tienes tareas pendientes.</div>`;const water=data.health.water[todayISO()]||0;document.getElementById("waterToday").textContent=`${water} ml`;document.getElementById("healthWater").textContent=`${water} ml`;document.getElementById("energyScore").textContent=`${data.health.energy}%`;document.getElementById("sleepHours").textContent=`${data.health.sleep[todayISO()]||0} h`;document.getElementById("dailySummary").innerHTML=`<div class="item-sub">Hoy: <strong>${tc.length}</strong> clases · <strong>${pending.filter(t=>t.date===todayISO()).length}</strong> tareas · racha de <strong>${data.profile.streak}</strong> días.</div>`;renderMissions()}
+function renderMissions(){const today=todayISO(),done=data.game.missions[today]||{};const missions=[["task","Completa una tarea",20,data.tasks.some(t=>t.done&&t.completedDate===today)],["water","Toma 1 litro de agua",15,(data.health.water[today]||0)>=1000],["study","Estudia al menos 30 min",25,data.study.some(s=>s.date===today&&Number(s.minutes)>=30)]];document.getElementById("dailyMissions").innerHTML=missions.map(([id,title,xp,condition])=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${title}</div><div class="item-sub">+${xp} XP</div></div><span class="badge ${condition||done[id]?"good":""}">${condition||done[id]?"Completada":"Pendiente"}</span></div></div>`).join("");missions.forEach(([id,,xp,condition])=>{if(condition&&!done[id]){data.game.missions[today]={...(data.game.missions[today]||{}),[id]:true};data.profile.xp+=xp;data.profile.coins+=Math.floor(xp/4)}});localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+function renderTasks(){let tasks=[...data.tasks];if(currentTaskFilter==="today")tasks=tasks.filter(t=>t.date===todayISO());if(currentTaskFilter==="pending")tasks=tasks.filter(t=>!t.done);if(currentTaskFilter==="done")tasks=tasks.filter(t=>t.done);tasks.sort((a,b)=>Number(a.done)-Number(b.done)||dateOnly(a.date||"2999-01-01")-dateOnly(b.date||"2999-01-01"));document.getElementById("taskList").innerHTML=tasks.length?tasks.map(taskCard).join(""):`<div class="empty">No hay tareas en esta vista.</div>`}
+function renderCourses(){document.getElementById("courseList").innerHTML=data.courses.length?data.courses.map(c=>{const as=c.assessments||[],w=as.filter(a=>a.grade!==""&&a.grade!=null),tw=w.reduce((s,a)=>s+Number(a.weight||0),0),avg=tw?w.reduce((s,a)=>s+Number(a.grade)*Number(a.weight||0),0)/tw:null;return `<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(c.name)}</div><div class="item-sub">${esc(c.teacher||"Sin profesor")} ${c.room?"· "+esc(c.room):""}</div><div class="grade-box"><div class="grade-pill">Promedio <strong>${avg?avg.toFixed(2):"--"}</strong></div><div class="grade-pill">${as.length} evaluaciones</div></div></div><div class="item-actions"><button class="mini-btn" onclick="courseDetails('${c.id}')">›</button><button class="mini-btn" onclick="deleteCourse('${c.id}')">×</button></div></div></div>`}).join(""):`<div class="empty">Aún no has agregado ramos.</div>`}
+function renderSchedule(){const days=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];const l=[...data.classes].sort((a,b)=>a.day-b.day||a.start.localeCompare(b.start));document.getElementById("scheduleList").innerHTML=l.length?l.map(c=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${days[c.day]} · ${esc(c.name)}</div><div class="item-sub">${c.start}–${c.end} ${c.room?"· "+esc(c.room):""}</div></div><button class="mini-btn" onclick="deleteClass('${c.id}')">×</button></div></div>`).join(""):`<div class="empty">Agrega tus clases.</div>`}
+function renderStudy(){document.getElementById("studyList").innerHTML=data.study.length?[...data.study].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(s.subject)}</div><div class="item-sub">${formatDate(s.date)} · ${s.minutes} min</div></div><button class="mini-btn" onclick="deleteStudy('${s.id}')">×</button></div></div>`).join(""):`<div class="empty">No hay sesiones registradas.</div>`}
+function renderHabits(){document.getElementById("habitList").innerHTML=data.habits.length?data.habits.map(h=>{const done=(h.doneDates||[]).includes(todayISO());return `<div class="item"><div class="item-row"><button class="check ${done?"done":""}" onclick="toggleHabit('${h.id}')"></button><div class="item-main"><div class="item-title">${esc(h.title)}</div><div class="item-sub">+${h.xp||10} XP al completar</div></div><button class="mini-btn" onclick="deleteHabit('${h.id}')">×</button></div></div>`}).join(""):`<div class="empty">Crea hábitos diarios.</div>`}
+function renderPlan(){const items=[];data.tasks.filter(t=>t.date).forEach(t=>items.push({date:t.date,title:t.title,sub:`Tarea · ${t.course||"Personal"}`}));data.events.forEach(e=>items.push({date:e.date,title:e.title,sub:`Evento${e.time?" · "+e.time:""}`,id:e.id}));data.courses.forEach(c=>(c.assessments||[]).forEach(a=>a.date&&items.push({date:a.date,title:a.name,sub:`Evaluación · ${c.name}`})));items.sort((a,b)=>dateOnly(a.date)-dateOnly(b.date));document.getElementById("timelineList").innerHTML=items.length?items.slice(0,30).map(i=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(i.title)}</div><div class="item-sub">${formatDate(i.date)} · ${esc(i.sub)}</div></div>${i.id?`<button class="mini-btn" onclick="deleteEvent('${i.id}')">×</button>`:""}</div></div>`).join(""):`<div class="empty">Nada planificado.</div>`}
+function renderMoney(){const spent=data.expenses.reduce((s,e)=>s+Number(e.amount||0),0),rem=Number(data.budget.total||0)-spent;document.getElementById("budgetBalance").textContent=money(rem);document.getElementById("budgetHint").textContent=data.budget.total?`Presupuesto ${money(data.budget.total)} · Gastado ${money(spent)}`:"Configura tu presupuesto.";document.getElementById("expenseList").innerHTML=data.expenses.length?[...data.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(e.title)}</div><div class="item-sub">${formatDate(e.date)} · ${esc(e.category||"Otros")}</div></div><strong>${money(e.amount)}</strong><button class="mini-btn" onclick="deleteExpense('${e.id}')">×</button></div></div>`).join(""):`<div class="empty">No hay gastos.</div>`}
+function renderGym(){document.getElementById("workoutList").innerHTML=data.workouts.length?[...data.workouts].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(w=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(w.name)}</div><div class="item-sub">${formatDate(w.date)} · ${esc(w.details||"Sin detalles")}</div></div><button class="mini-btn" onclick="deleteWorkout('${w.id}')">×</button></div></div>`).join(""):`<div class="empty">Sin entrenamientos.</div>`}
+function renderShopping(){document.getElementById("shoppingList").innerHTML=data.shopping.length?data.shopping.map(s=>`<div class="item"><div class="item-row"><button class="check ${s.done?"done":""}" onclick="toggleShopping('${s.id}')"></button><div class="item-main"><div class="item-title ${s.done?"done-text":""}">${esc(s.title)}</div><div class="item-sub">${s.price?money(s.price):"Sin precio"} ${s.place?"· "+esc(s.place):""}</div></div><button class="mini-btn" onclick="deleteShopping('${s.id}')">×</button></div></div>`).join(""):`<div class="empty">Lista vacía.</div>`}
+function renderGame(){document.getElementById("skinGrid").innerHTML=skins.map(s=>{const unlocked=data.game.unlockedSkins.includes(s.emoji),sel=data.profile.skin===s.emoji;return `<button class="skin-card ${!unlocked?"locked":""} ${sel?"selected":""}" onclick="${unlocked?`selectSkin('${s.emoji}')`:""}"><div class="skin-emoji">${s.emoji}</div><strong>${s.name}</strong><small>${unlocked?"Desbloqueada":"Nivel "+s.level}</small></button>`}).join("");document.getElementById("rewardList").innerHTML=rewards.map(r=>`<div class="item"><div class="item-row"><div><div class="item-title">Nivel ${r.level}</div><div class="item-sub">${r.text}</div></div><span class="badge ${data.profile.level>=r.level?"good":""}">${data.profile.level>=r.level?"Desbloqueado":"Bloqueado"}</span></div></div>`).join("");const achievements=[["firstTask","Primer paso","Completa una tarea"],["tenTasks","Productivo","Completa 10 tareas"],["study300","Estudioso","Acumula 300 min de estudio"],["gym5","Constante","Registra 5 entrenamientos"],["level5","Nivel 5","Alcanza nivel 5"],["streak7","Semana perfecta","Mantén 7 días de racha"]];document.getElementById("achievementList").innerHTML=achievements.map(([id,n,d])=>`<div class="item"><div class="item-row"><div><div class="item-title">${n}</div><div class="item-sub">${d}</div></div><span class="badge ${data.game.achievements.includes(id)?"good":""}">${data.game.achievements.includes(id)?"✓":"🔒"}</span></div></div>`).join("");document.getElementById("achievementCount").textContent=data.game.achievements.length;document.getElementById("skinCount").textContent=data.game.unlockedSkins.length}
+function renderHealth(){document.getElementById("energyRange").value=data.health.energy;document.getElementById("moodRange").value=data.health.mood}
+function renderAll(){unlockForLevel(data.profile.level);checkAchievements();renderClock();renderProfile();renderHome();renderTasks();renderCourses();renderSchedule();renderStudy();renderHabits();renderPlan();renderMoney();renderGym();renderShopping();renderHealth();renderGame()}
 
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+function showQuickAdd(){openModal(`<h2>Agregar</h2><div class="stack"><button class="secondary-btn" onclick="closeModal();showTaskForm()">✅ Tarea</button><button class="secondary-btn" onclick="closeModal();showEventForm()">📅 Evento</button><button class="secondary-btn" onclick="closeModal();showExpenseForm()">💰 Gasto</button><button class="secondary-btn" onclick="closeModal();showStudyForm()">📚 Estudio</button><button class="secondary-btn" onclick="closeModal();showWorkoutForm()">🏋️ Entreno</button><button class="secondary-btn" onclick="closeModal();showShoppingForm()">🛒 Compra</button></div>`)}
 
-function money(n) {
-  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(Number(n || 0));
-}
+function showProfileForm(){openModal(`<h2>Editar perfil</h2><form class="form" id="profileForm"><label>Nombre<input required name="name" value="${esc(data.profile.name)}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("profileForm").onsubmit=e=>{e.preventDefault();data.profile.name=new FormData(e.target).get("name");saveData();closeModal()}}
+function showTaskForm(existing=null){const opts=[`<option value="">Personal</option>`,...data.courses.map(c=>`<option value="${esc(c.name)}" ${existing?.course===c.name?"selected":""}>${esc(c.name)}</option>`)].join("");openModal(`<h2>${existing?"Editar":"Nueva"} tarea</h2><form class="form" id="taskForm"><label>Título<input required name="title" value="${esc(existing?.title||"")}"></label><label>Área<select name="course">${opts}</select></label><label>Fecha<input type="date" name="date" value="${existing?.date||todayISO()}"></label><label>Prioridad<select name="priority">${["Alta","Media","Baja"].map(p=>`<option ${existing?.priority===p?"selected":""}>${p}</option>`).join("")}</select></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("taskForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(existing)Object.assign(existing,{title:f.get("title"),course:f.get("course"),date:f.get("date"),priority:f.get("priority")});else data.tasks.push({id:uid(),title:f.get("title"),course:f.get("course"),date:f.get("date"),priority:f.get("priority"),done:false});saveData();closeModal()}}
+function showCourseForm(){openModal(`<h2>Nuevo ramo</h2><form class="form" id="courseForm"><label>Nombre<input required name="name"></label><label>Profesor<input name="teacher"></label><label>Sala<input name="room"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("courseForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.courses.push({id:uid(),name:f.get("name"),teacher:f.get("teacher"),room:f.get("room"),assessments:[]});saveData();closeModal()}}
+function courseDetails(id){const c=data.courses.find(x=>x.id===id);if(!c)return;openModal(`<h2>${esc(c.name)}</h2><div class="stack">${(c.assessments||[]).map(a=>`<div class="item"><div class="item-row"><div><div class="item-title">${esc(a.name)}</div><div class="item-sub">${a.date?formatDate(a.date):"Sin fecha"} · ${a.weight}% · Nota ${a.grade||"--"}</div></div><button class="mini-btn" onclick="deleteAssessment('${c.id}','${a.id}')">×</button></div></div>`).join("")||`<div class="empty">Sin evaluaciones.</div>`}</div><div style="height:10px"></div><button class="primary-btn full" onclick="showAssessmentForm('${c.id}')">+ Evaluación</button><div style="height:8px"></div><button class="secondary-btn full" onclick="closeModal()">Cerrar</button>`)}
+function showAssessmentForm(cid){const c=data.courses.find(x=>x.id===cid);openModal(`<h2>Nueva evaluación</h2><form class="form" id="assessmentForm"><label>Nombre<input required name="name"></label><label>Fecha<input type="date" name="date"></label><label>Ponderación %<input type="number" name="weight" value="30"></label><label>Nota<input type="number" min="1" max="7" step=".1" name="grade"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="courseDetails('${cid}')">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("assessmentForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);c.assessments.push({id:uid(),name:f.get("name"),date:f.get("date"),weight:Number(f.get("weight")),grade:f.get("grade")});addXP(5);courseDetails(cid)}}
+function showClassForm(){openModal(`<h2>Nueva clase</h2><form class="form" id="classForm"><label>Nombre<input required name="name"></label><label>Día<select name="day"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option></select></label><label>Inicio<input type="time" required name="start"></label><label>Fin<input type="time" required name="end"></label><label>Sala<input name="room"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("classForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.classes.push({id:uid(),name:f.get("name"),day:Number(f.get("day")),start:f.get("start"),end:f.get("end"),room:f.get("room")});saveData();closeModal()}}
+function showEventForm(){openModal(`<h2>Nuevo evento</h2><form class="form" id="eventForm"><label>Título<input required name="title"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><label>Hora<input type="time" name="time"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("eventForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.events.push({id:uid(),title:f.get("title"),date:f.get("date"),time:f.get("time")});saveData();closeModal()}}
+function showBudgetForm(){openModal(`<h2>Presupuesto</h2><form class="form" id="budgetForm"><label>Dinero disponible<input type="number" required name="total" value="${data.budget.total}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("budgetForm").onsubmit=e=>{e.preventDefault();data.budget.total=Number(new FormData(e.target).get("total"));saveData();closeModal()}}
+function showExpenseForm(){openModal(`<h2>Registrar gasto</h2><form class="form" id="expenseForm"><label>Descripción<input required name="title"></label><label>Monto<input type="number" required name="amount"></label><label>Categoría<select name="category"><option>Comida</option><option>Transporte</option><option>Universidad</option><option>Gym</option><option>Compras</option><option>Otros</option></select></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("expenseForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.expenses.push({id:uid(),title:f.get("title"),amount:Number(f.get("amount")),category:f.get("category"),date:f.get("date")});saveData();closeModal()}}
+function showWorkoutForm(){openModal(`<h2>Entrenamiento</h2><form class="form" id="workoutForm"><label>Nombre<input required name="name"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><label>Detalles<textarea name="details"></textarea></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("workoutForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.workouts.push({id:uid(),name:f.get("name"),date:f.get("date"),details:f.get("details")});addXP(20);closeModal()}}
+function showShoppingForm(){openModal(`<h2>Compra pendiente</h2><form class="form" id="shoppingForm"><label>Producto<input required name="title"></label><label>Precio<input type="number" name="price"></label><label>Lugar<input name="place"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("shoppingForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.shopping.push({id:uid(),title:f.get("title"),price:Number(f.get("price")||0),place:f.get("place"),done:false});saveData();closeModal()}}
+function showStudyForm(){openModal(`<h2>Sesión de estudio</h2><form class="form" id="studyForm"><label>Materia<input required name="subject"></label><label>Minutos<input type="number" min="1" required name="minutes" value="30"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("studyForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),m=Number(f.get("minutes"));data.study.push({id:uid(),subject:f.get("subject"),minutes:m,date:f.get("date")});addXP(Math.max(5,Math.floor(m/3)));closeModal()}}
+function showHabitForm(){openModal(`<h2>Nuevo hábito</h2><form class="form" id="habitForm"><label>Nombre<input required name="title"></label><label>XP por completar<input type="number" min="1" max="50" name="xp" value="10"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("habitForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.habits.push({id:uid(),title:f.get("title"),xp:Number(f.get("xp")),doneDates:[]});saveData();closeModal()}}
+function showSleepForm(){openModal(`<h2>Registrar sueño</h2><form class="form" id="sleepForm"><label>Horas dormidas<input type="number" min="0" max="24" step=".5" required name="hours" value="${data.health.sleep[todayISO()]||8}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("sleepForm").onsubmit=e=>{e.preventDefault();data.health.sleep[todayISO()]=Number(new FormData(e.target).get("hours"));saveData();closeModal()}}
 
-function dateOnly(d) {
-  return new Date(d + "T12:00:00");
-}
+function showSettings(){openModal(`<h2>Ajustes</h2><div class="stack"><button class="secondary-btn" onclick="exportBackup()">Exportar copia</button><label class="secondary-btn" style="text-align:center">Importar copia<input id="importFile" type="file" accept="application/json" hidden></label><button class="danger-btn" onclick="resetAll()">Borrar todos los datos</button><button class="secondary-btn" onclick="closeModal()">Cerrar</button></div>`);document.getElementById("importFile").addEventListener("change",importBackup)}
+function exportBackup(){const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=`nexo-pro-${todayISO()}.json`;a.click();URL.revokeObjectURL(u)}
+function importBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=Object.assign(structuredClone(defaultData),JSON.parse(r.result));saveData();closeModal();alert("Copia importada.")}catch{alert("Archivo inválido.")}};r.readAsText(f)}
+function resetAll(){if(confirm("¿Borrar todos los datos?")){data=structuredClone(defaultData);saveData();closeModal()}}
 
-function formatDate(d) {
-  return new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short" }).format(new Date(d));
-}
+window.toggleTask=id=>{const t=data.tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;t.completedDate=t.done?todayISO():"";if(t.done)addXP(15);else saveData()}
+window.editTask=id=>{const t=data.tasks.find(x=>x.id===id);if(t)showTaskForm(t)}
+window.deleteTask=id=>{data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
+window.deleteCourse=id=>{data.courses=data.courses.filter(x=>x.id!==id);saveData()}
+window.courseDetails=courseDetails;window.showAssessmentForm=showAssessmentForm
+window.deleteAssessment=(cid,aid)=>{const c=data.courses.find(x=>x.id===cid);if(c){c.assessments=c.assessments.filter(x=>x.id!==aid);saveData();courseDetails(cid)}}
+window.deleteClass=id=>{data.classes=data.classes.filter(x=>x.id!==id);saveData()}
+window.deleteEvent=id=>{data.events=data.events.filter(x=>x.id!==id);saveData()}
+window.deleteExpense=id=>{data.expenses=data.expenses.filter(x=>x.id!==id);saveData()}
+window.deleteWorkout=id=>{data.workouts=data.workouts.filter(x=>x.id!==id);saveData()}
+window.deleteShopping=id=>{data.shopping=data.shopping.filter(x=>x.id!==id);saveData()}
+window.toggleShopping=id=>{const s=data.shopping.find(x=>x.id===id);if(s){s.done=!s.done;saveData()}}
+window.deleteStudy=id=>{data.study=data.study.filter(x=>x.id!==id);saveData()}
+window.toggleHabit=id=>{const h=data.habits.find(x=>x.id===id),t=todayISO();if(!h)return;h.doneDates=h.doneDates||[];if(h.doneDates.includes(t))h.doneDates=h.doneDates.filter(x=>x!==t);else{h.doneDates.push(t);addXP(h.xp||10);return}saveData()}
+window.deleteHabit=id=>{data.habits=data.habits.filter(x=>x.id!==id);saveData()}
+window.selectSkin=e=>{if(data.game.unlockedSkins.includes(e)){data.profile.skin=e;saveData()}}
+window.closeModal=closeModal;window.showTaskForm=showTaskForm;window.showEventForm=showEventForm;window.showExpenseForm=showExpenseForm;window.showWorkoutForm=showWorkoutForm;window.showShoppingForm=showShoppingForm;window.showStudyForm=showStudyForm;window.exportBackup=exportBackup;window.resetAll=resetAll
 
-function daysUntil(dateStr) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const target = dateOnly(dateStr);
-  return Math.ceil((target - today) / 86400000);
-}
+document.getElementById("quickAddBtn").onclick=showQuickAdd;document.getElementById("navPlus").onclick=showQuickAdd;document.getElementById("editProfileBtn").onclick=showProfileForm;document.getElementById("addTaskBtn").onclick=()=>showTaskForm();document.getElementById("addCourseBtn").onclick=showCourseForm;document.getElementById("addClassBtn").onclick=showClassForm;document.getElementById("addEventBtn").onclick=showEventForm;document.getElementById("setBudgetBtn").onclick=showBudgetForm;document.getElementById("addExpenseBtn").onclick=showExpenseForm;document.getElementById("addWorkoutBtn").onclick=showWorkoutForm;document.getElementById("addShoppingBtn").onclick=showShoppingForm;document.getElementById("addStudyBtn").onclick=showStudyForm;document.getElementById("addHabitBtn").onclick=showHabitForm;document.getElementById("settingsBtn").onclick=showSettings;document.getElementById("notificationsBtn").onclick=()=>alert("En esta versión, las alertas internas aparecen dentro de NEXO. Las notificaciones push reales requieren configuración adicional.");document.getElementById("addWaterBtn").onclick=()=>{data.health.water[todayISO()]=(data.health.water[todayISO()]||0)+250;addXP(2)};document.getElementById("setSleepBtn").onclick=showSleepForm
+document.getElementById("energyRange").oninput=e=>{data.health.energy=Number(e.target.value);saveData()};document.getElementById("moodRange").oninput=e=>{data.health.mood=Number(e.target.value);saveData()}
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));b.classList.add("active");currentTaskFilter=b.dataset.filter;renderTasks()})
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".life-panel").forEach(p=>p.classList.remove("active"));document.getElementById("life"+b.dataset.life.charAt(0).toUpperCase()+b.dataset.life.slice(1)).classList.add("active")})
 
-function todayISO() {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
-  return local.toISOString().slice(0,10);
-}
+document.getElementById("focusBtn").onclick=()=>{if(focusInterval){clearInterval(focusInterval);focusInterval=null;document.getElementById("focusBtn").textContent="Reanudar";return}document.getElementById("focusBtn").textContent="Pausar";focusInterval=setInterval(()=>{focusSeconds--;const m=Math.floor(focusSeconds/60),s=focusSeconds%60;document.getElementById("focusState").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;if(focusSeconds<=0){clearInterval(focusInterval);focusInterval=null;focusSeconds=1500;addXP(30);alert("Sesión completada: +30 XP")}},1000)}
 
-function nowTime() {
-  return new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
-}
+document.getElementById("startGameBtn").onclick=()=>{if(gameActive)return;gameActive=true;gameScore=0;document.getElementById("gameScore").textContent="0";document.getElementById("gameStatus").textContent="¡Toca rápido! 15 segundos";let left=15;gameTimer=setInterval(()=>{left--;document.getElementById("gameStatus").textContent=`Tiempo: ${left}s`;if(left<=0){clearInterval(gameTimer);gameActive=false;const reward=Math.max(1,Math.floor(gameScore/5));data.profile.coins+=reward;saveData();document.getElementById("gameStatus").textContent=`Ganaste ${reward} monedas`;alert(`Partida terminada: ${gameScore} toques, +${reward} monedas`) }},1000)}
+document.getElementById("gameTapBtn").onclick=()=>{if(gameActive){gameScore++;document.getElementById("gameScore").textContent=gameScore}}
 
-function dayNameIndex() {
-  return new Date().getDay();
-}
-
-function escapeHtml(str="") {
-  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-}
-
-function openModal(html) {
-  document.getElementById("modal").innerHTML = html;
-  document.getElementById("modalBackdrop").classList.remove("hidden");
-}
-
-function closeModal() {
-  document.getElementById("modalBackdrop").classList.add("hidden");
-  document.getElementById("modal").innerHTML = "";
-}
-
-document.getElementById("modalBackdrop").addEventListener("click", e => {
-  if (e.target.id === "modalBackdrop") closeModal();
-});
-
-function navTo(screen) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById(screen + "Screen").classList.add("active");
-  document.querySelectorAll(".nav-item[data-screen]").forEach(b => b.classList.toggle("active", b.dataset.screen === screen));
-  const titles = { home: "NEXO", university: "Universidad", tasks: "Tareas", plan: "Plan", life: "Vida" };
-  document.getElementById("screenTitle").textContent = titles[screen] || "NEXO";
-}
-
-document.querySelectorAll(".nav-item[data-screen]").forEach(btn => btn.addEventListener("click", () => navTo(btn.dataset.screen)));
-document.addEventListener("click", e => {
-  const target = e.target.closest("[data-nav]");
-  if (target) navTo(target.dataset.nav);
-});
-
-function renderClock() {
-  document.getElementById("heroTime").textContent = nowTime();
-  const now = new Date();
-  const hour = now.getHours();
-  let msg = "Organiza lo importante y deja el resto para después.";
-  if (hour < 10) msg = "Buen momento para ordenar el día antes de empezar.";
-  else if (hour < 14) msg = "Concéntrate en lo más importante de esta mañana.";
-  else if (hour < 19) msg = "Todavía queda tiempo para avanzar bastante hoy.";
-  else msg = "Cierra pendientes importantes y prepara mañana.";
-  document.getElementById("heroMessage").textContent = msg;
-  document.getElementById("todayLabel").textContent = new Intl.DateTimeFormat("es-CL", { weekday: "long", day: "numeric", month: "long" }).format(now);
-}
-
-function renderHome() {
-  const pending = data.tasks.filter(t => !t.done);
-  document.getElementById("pendingCount").textContent = `${pending.length} ${pending.length === 1 ? "tarea" : "tareas"}`;
-
-  const remaining = data.budget.total - data.expenses.reduce((s,e) => s + Number(e.amount || 0), 0);
-  document.getElementById("moneyAvailable").textContent = money(remaining);
-
-  const todayDay = dayNameIndex();
-  const todayClasses = data.classes.filter(c => Number(c.day) === todayDay).sort((a,b) => a.start.localeCompare(b.start));
-  const currentHHMM = new Date().toTimeString().slice(0,5);
-  const nextClass = todayClasses.find(c => c.start >= currentHHMM) || todayClasses[0];
-  document.getElementById("nextClass").textContent = nextClass ? `${nextClass.name} · ${nextClass.start}` : "Sin clases próximas";
-
-  const exams = data.courses.flatMap(c => (c.assessments || []).map(a => ({...a, course: c.name})))
-    .filter(a => a.date && daysUntil(a.date) >= 0)
-    .sort((a,b) => dateOnly(a.date) - dateOnly(b.date));
-  const exam = exams[0];
-  document.getElementById("nextExam").textContent = exam ? `${exam.course} · ${formatDate(exam.date)}` : "Sin evaluaciones";
-
-  const priorities = [...pending].sort((a,b) => {
-    const pa = a.priority === "Alta" ? 0 : a.priority === "Media" ? 1 : 2;
-    const pb = b.priority === "Alta" ? 0 : b.priority === "Media" ? 1 : 2;
-    return pa - pb || dateOnly(a.date || "2999-01-01") - dateOnly(b.date || "2999-01-01");
-  }).slice(0,4);
-
-  document.getElementById("priorityList").innerHTML = priorities.length ? priorities.map(taskCard).join("") : `<div class="empty">No tienes tareas pendientes.</div>`;
-
-  const overdue = pending.filter(t => t.date && daysUntil(t.date) < 0).length;
-  const todayTasks = pending.filter(t => t.date === todayISO()).length;
-  const classesToday = todayClasses.length;
-  document.getElementById("dailySummary").innerHTML = `
-    <div class="item-sub">Hoy tienes <strong>${classesToday}</strong> clases, <strong>${todayTasks}</strong> tareas con fecha de hoy y <strong>${overdue}</strong> atrasadas.</div>
-  `;
-}
-
-function taskCard(t) {
-  const due = t.date ? daysUntil(t.date) : null;
-  const dueBadge = t.date ? `<span class="badge ${due < 0 ? "urgent" : due === 0 ? "warn" : ""}">${due < 0 ? "Atrasada" : due === 0 ? "Hoy" : formatDate(t.date)}</span>` : "";
-  return `<div class="item">
-    <div class="item-row">
-      <button class="check ${t.done ? "done" : ""}" onclick="toggleTask('${t.id}')"></button>
-      <div class="item-main">
-        <div class="item-title ${t.done ? "done-text" : ""}">${escapeHtml(t.title)}</div>
-        <div class="item-sub">${escapeHtml(t.course || "Personal")}</div>
-        <div class="badges">
-          ${dueBadge}
-          <span class="badge">${escapeHtml(t.priority || "Media")}</span>
-        </div>
-      </div>
-      <div class="item-actions">
-        <button class="mini-btn" onclick="editTask('${t.id}')">✎</button>
-        <button class="mini-btn" onclick="deleteTask('${t.id}')">×</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderTasks() {
-  let tasks = [...data.tasks];
-  if (currentTaskFilter === "today") tasks = tasks.filter(t => t.date === todayISO());
-  if (currentTaskFilter === "pending") tasks = tasks.filter(t => !t.done);
-  if (currentTaskFilter === "done") tasks = tasks.filter(t => t.done);
-  tasks.sort((a,b) => Number(a.done)-Number(b.done) || dateOnly(a.date || "2999-01-01") - dateOnly(b.date || "2999-01-01"));
-  document.getElementById("taskList").innerHTML = tasks.length ? tasks.map(taskCard).join("") : `<div class="empty">No hay tareas en esta vista.</div>`;
-}
-
-function renderCourses() {
-  const html = data.courses.length ? data.courses.map(c => {
-    const as = c.assessments || [];
-    const weighted = as.filter(a => a.grade !== "" && a.grade != null);
-    const totalWeight = weighted.reduce((s,a) => s + Number(a.weight || 0), 0);
-    const avg = totalWeight > 0 ? weighted.reduce((s,a) => s + Number(a.grade || 0) * Number(a.weight || 0), 0) / totalWeight : null;
-    return `<div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(c.name)}</div>
-          <div class="item-sub">${escapeHtml(c.teacher || "Sin profesor")} ${c.room ? "· " + escapeHtml(c.room) : ""}</div>
-          <div class="grade-box">
-            <div class="grade-pill">Promedio: <strong>${avg ? avg.toFixed(2) : "--"}</strong></div>
-            <div class="grade-pill">${as.length} evaluaciones</div>
-          </div>
-        </div>
-        <div class="item-actions">
-          <button class="mini-btn" onclick="courseDetails('${c.id}')">›</button>
-          <button class="mini-btn" onclick="deleteCourse('${c.id}')">×</button>
-        </div>
-      </div>
-    </div>`;
-  }).join("") : `<div class="empty">Aún no has agregado ramos.</div>`;
-  document.getElementById("courseList").innerHTML = html;
-}
-
-function renderSchedule() {
-  const days = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-  const list = [...data.classes].sort((a,b) => Number(a.day)-Number(b.day) || a.start.localeCompare(b.start));
-  document.getElementById("scheduleList").innerHTML = list.length ? list.map(c => `
-    <div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${days[c.day]} · ${escapeHtml(c.name)}</div>
-          <div class="item-sub">${c.start}–${c.end} ${c.room ? "· " + escapeHtml(c.room) : ""}</div>
-        </div>
-        <button class="mini-btn" onclick="deleteClass('${c.id}')">×</button>
-      </div>
-    </div>`).join("") : `<div class="empty">Agrega tus clases para ver tu horario.</div>`;
-}
-
-function renderPlan() {
-  const items = [];
-  data.tasks.filter(t => t.date).forEach(t => items.push({date:t.date, title:t.title, sub:`Tarea · ${t.course || "Personal"}`, kind:"task"}));
-  data.events.forEach(e => items.push({date:e.date, title:e.title, sub:`Evento${e.time ? " · " + e.time : ""}`, kind:"event", id:e.id}));
-  data.courses.forEach(c => (c.assessments || []).forEach(a => a.date && items.push({date:a.date, title:a.name, sub:`Evaluación · ${c.name}`, kind:"exam"})));
-  items.sort((a,b) => dateOnly(a.date)-dateOnly(b.date));
-  document.getElementById("timelineList").innerHTML = items.length ? items.slice(0,30).map(i => `
-    <div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(i.title)}</div>
-          <div class="item-sub">${formatDate(i.date)} · ${escapeHtml(i.sub)}</div>
-        </div>
-        ${i.kind === "event" ? `<button class="mini-btn" onclick="deleteEvent('${i.id}')">×</button>` : ""}
-      </div>
-    </div>`).join("") : `<div class="empty">No tienes eventos próximos.</div>`;
-}
-
-function renderMoney() {
-  const spent = data.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const remaining = Number(data.budget.total||0)-spent;
-  document.getElementById("budgetBalance").textContent = money(remaining);
-  document.getElementById("budgetHint").textContent = data.budget.total ? `Presupuesto ${money(data.budget.total)} · Gastado ${money(spent)}` : "Configura cuánto dinero tienes disponible.";
-  document.getElementById("expenseList").innerHTML = data.expenses.length ? [...data.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e => `
-    <div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(e.title)}</div>
-          <div class="item-sub">${formatDate(e.date)} · ${escapeHtml(e.category || "Otros")}</div>
-        </div>
-        <strong>${money(e.amount)}</strong>
-        <button class="mini-btn" onclick="deleteExpense('${e.id}')">×</button>
-      </div>
-    </div>`).join("") : `<div class="empty">No hay gastos registrados.</div>`;
-}
-
-function renderGym() {
-  document.getElementById("workoutList").innerHTML = data.workouts.length ? [...data.workouts].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(w => `
-    <div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(w.name)}</div>
-          <div class="item-sub">${formatDate(w.date)} · ${escapeHtml(w.details || "Sin detalles")}</div>
-        </div>
-        <button class="mini-btn" onclick="deleteWorkout('${w.id}')">×</button>
-      </div>
-    </div>`).join("") : `<div class="empty">Todavía no hay entrenamientos.</div>`;
-}
-
-function renderShopping() {
-  document.getElementById("shoppingList").innerHTML = data.shopping.length ? data.shopping.map(s => `
-    <div class="item">
-      <div class="item-row">
-        <button class="check ${s.done ? "done" : ""}" onclick="toggleShopping('${s.id}')"></button>
-        <div class="item-main">
-          <div class="item-title ${s.done ? "done-text" : ""}">${escapeHtml(s.title)}</div>
-          <div class="item-sub">${s.price ? money(s.price) : "Sin precio"} ${s.place ? "· " + escapeHtml(s.place) : ""}</div>
-        </div>
-        <button class="mini-btn" onclick="deleteShopping('${s.id}')">×</button>
-      </div>
-    </div>`).join("") : `<div class="empty">Lista vacía.</div>`;
-}
-
-function renderAll() {
-  renderClock();
-  renderHome();
-  renderTasks();
-  renderCourses();
-  renderSchedule();
-  renderPlan();
-  renderMoney();
-  renderGym();
-  renderShopping();
-}
-
-function showQuickAdd() {
-  openModal(`
-    <h2>Agregar</h2>
-    <div class="stack">
-      <button class="secondary-btn" onclick="closeModal(); showTaskForm()">✅ Nueva tarea</button>
-      <button class="secondary-btn" onclick="closeModal(); showEventForm()">📅 Nuevo evento</button>
-      <button class="secondary-btn" onclick="closeModal(); showExpenseForm()">💰 Registrar gasto</button>
-      <button class="secondary-btn" onclick="closeModal(); showWorkoutForm()">🏋️ Entrenamiento</button>
-      <button class="secondary-btn" onclick="closeModal(); showShoppingForm()">🛒 Compra pendiente</button>
-    </div>
-  `);
-}
-
-function showTaskForm(existing=null) {
-  const courseOptions = [`<option value="">Personal</option>`, ...data.courses.map(c => `<option value="${escapeHtml(c.name)}" ${existing?.course===c.name?"selected":""}>${escapeHtml(c.name)}</option>`)].join("");
-  openModal(`
-    <h2>${existing ? "Editar tarea" : "Nueva tarea"}</h2>
-    <form class="form" id="taskForm">
-      <label>Título<input required name="title" value="${escapeHtml(existing?.title||"")}" placeholder="Ej: terminar guía de Física"></label>
-      <label>Área<select name="course">${courseOptions}</select></label>
-      <label>Fecha<input type="date" name="date" value="${existing?.date||todayISO()}"></label>
-      <label>Prioridad<select name="priority">
-        ${["Alta","Media","Baja"].map(p=>`<option ${existing?.priority===p?"selected":""}>${p}</option>`).join("")}
-      </select></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("taskForm").onsubmit = e => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    if (existing) Object.assign(existing, { title:f.get("title"), course:f.get("course"), date:f.get("date"), priority:f.get("priority") });
-    else data.tasks.push({ id:uid(), title:f.get("title"), course:f.get("course"), date:f.get("date"), priority:f.get("priority"), done:false });
-    saveData(); closeModal();
-  };
-}
-
-function showCourseForm() {
-  openModal(`
-    <h2>Nuevo ramo</h2>
-    <form class="form" id="courseForm">
-      <label>Nombre<input required name="name" placeholder="Ej: Física I"></label>
-      <label>Profesor<input name="teacher" placeholder="Opcional"></label>
-      <label>Sala habitual<input name="room" placeholder="Opcional"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("courseForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.courses.push({ id:uid(), name:f.get("name"), teacher:f.get("teacher"), room:f.get("room"), assessments:[] });
-    saveData(); closeModal();
-  };
-}
-
-function courseDetails(id) {
-  const c = data.courses.find(x=>x.id===id); if(!c) return;
-  const assessments = (c.assessments||[]).map(a => `
-    <div class="item">
-      <div class="item-row">
-        <div class="item-main">
-          <div class="item-title">${escapeHtml(a.name)}</div>
-          <div class="item-sub">${a.date ? formatDate(a.date) : "Sin fecha"} · ${a.weight}% · Nota ${a.grade || "--"}</div>
-        </div>
-        <button class="mini-btn" onclick="deleteAssessment('${c.id}','${a.id}')">×</button>
-      </div>
-    </div>`).join("") || `<div class="empty">Sin evaluaciones.</div>`;
-  openModal(`
-    <h2>${escapeHtml(c.name)}</h2>
-    <div class="stack">${assessments}</div>
-    <div style="height:12px"></div>
-    <button class="primary-btn" style="width:100%" onclick="showAssessmentForm('${c.id}')">+ Agregar evaluación</button>
-    <div style="height:10px"></div>
-    <button class="secondary-btn" style="width:100%" onclick="closeModal()">Cerrar</button>
-  `);
-}
-
-function showAssessmentForm(courseId) {
-  const c = data.courses.find(x=>x.id===courseId); if(!c) return;
-  openModal(`
-    <h2>Nueva evaluación</h2>
-    <form class="form" id="assessmentForm">
-      <label>Nombre<input required name="name" placeholder="Ej: Prueba 1"></label>
-      <label>Fecha<input type="date" name="date"></label>
-      <label>Ponderación (%)<input required type="number" min="0" max="100" step="0.1" name="weight" value="30"></label>
-      <label>Nota (opcional)<input type="number" min="1" max="7" step="0.1" name="grade" placeholder="Ej: 4.5"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="courseDetails('${courseId}')">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("assessmentForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    c.assessments.push({ id:uid(), name:f.get("name"), date:f.get("date"), weight:Number(f.get("weight")), grade:f.get("grade") });
-    saveData(); courseDetails(courseId);
-  };
-}
-
-function showClassForm() {
-  openModal(`
-    <h2>Nueva clase</h2>
-    <form class="form" id="classForm">
-      <label>Nombre<input required name="name" placeholder="Ej: Física"></label>
-      <label>Día<select name="day">
-        <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option>
-      </select></label>
-      <label>Inicio<input required type="time" name="start"></label>
-      <label>Fin<input required type="time" name="end"></label>
-      <label>Sala<input name="room" placeholder="Opcional"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("classForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.classes.push({ id:uid(), name:f.get("name"), day:Number(f.get("day")), start:f.get("start"), end:f.get("end"), room:f.get("room") });
-    saveData(); closeModal();
-  };
-}
-
-function showEventForm() {
-  openModal(`
-    <h2>Nuevo evento</h2>
-    <form class="form" id="eventForm">
-      <label>Título<input required name="title" placeholder="Ej: Médico"></label>
-      <label>Fecha<input required type="date" name="date" value="${todayISO()}"></label>
-      <label>Hora<input type="time" name="time"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("eventForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.events.push({ id:uid(), title:f.get("title"), date:f.get("date"), time:f.get("time") });
-    saveData(); closeModal();
-  };
-}
-
-function showBudgetForm() {
-  openModal(`
-    <h2>Presupuesto</h2>
-    <form class="form" id="budgetForm">
-      <label>Dinero disponible<input required type="number" min="0" step="1" name="total" value="${data.budget.total||0}"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("budgetForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target); data.budget.total=Number(f.get("total")); saveData(); closeModal();
-  };
-}
-
-function showExpenseForm() {
-  openModal(`
-    <h2>Registrar gasto</h2>
-    <form class="form" id="expenseForm">
-      <label>Descripción<input required name="title" placeholder="Ej: Almuerzo"></label>
-      <label>Monto<input required type="number" min="0" name="amount"></label>
-      <label>Categoría<select name="category"><option>Comida</option><option>Transporte</option><option>Universidad</option><option>Gym</option><option>Compras</option><option>Otros</option></select></label>
-      <label>Fecha<input required type="date" name="date" value="${todayISO()}"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("expenseForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.expenses.push({id:uid(), title:f.get("title"), amount:Number(f.get("amount")), category:f.get("category"), date:f.get("date")});
-    saveData(); closeModal();
-  };
-}
-
-function showWorkoutForm() {
-  openModal(`
-    <h2>Entrenamiento</h2>
-    <form class="form" id="workoutForm">
-      <label>Nombre<input required name="name" placeholder="Ej: Pecho + tríceps"></label>
-      <label>Fecha<input required type="date" name="date" value="${todayISO()}"></label>
-      <label>Detalles<textarea name="details" placeholder="Press banca 60kg x 8..."></textarea></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("workoutForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.workouts.push({id:uid(), name:f.get("name"), date:f.get("date"), details:f.get("details")});
-    saveData(); closeModal();
-  };
-}
-
-function showShoppingForm() {
-  openModal(`
-    <h2>Agregar compra</h2>
-    <form class="form" id="shoppingForm">
-      <label>Producto<input required name="title" placeholder="Ej: Creatina"></label>
-      <label>Precio estimado<input type="number" min="0" name="price"></label>
-      <label>Lugar<input name="place" placeholder="Ej: Supermercado"></label>
-      <div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div>
-    </form>
-  `);
-  document.getElementById("shoppingForm").onsubmit = e => {
-    e.preventDefault(); const f = new FormData(e.target);
-    data.shopping.push({id:uid(), title:f.get("title"), price:Number(f.get("price")||0), place:f.get("place"), done:false});
-    saveData(); closeModal();
-  };
-}
-
-function showSettings() {
-  openModal(`
-    <h2>Ajustes</h2>
-    <div class="stack">
-      <button class="secondary-btn" onclick="exportBackup()">Exportar copia de seguridad</button>
-      <label class="secondary-btn" style="text-align:center">Importar copia<input id="importFile" type="file" accept="application/json" hidden></label>
-      <button class="danger-btn" onclick="resetAll()">Borrar todos los datos</button>
-      <button class="secondary-btn" onclick="closeModal()">Cerrar</button>
-    </div>
-  `);
-  document.getElementById("importFile").addEventListener("change", importBackup);
-}
-
-function exportBackup() {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href=url; a.download=`nexo-backup-${todayISO()}.json`; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importBackup(e) {
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(reader.result);
-      data = { ...structuredClone(defaultData), ...parsed };
-      saveData(); closeModal(); alert("Copia importada correctamente.");
-    } catch { alert("Ese archivo no parece ser una copia válida de NEXO."); }
-  };
-  reader.readAsText(file);
-}
-
-function resetAll() {
-  if (!confirm("¿Seguro que quieres borrar todos los datos?")) return;
-  data = structuredClone(defaultData);
-  saveData(); closeModal();
-}
-
-window.toggleTask = id => { const t=data.tasks.find(x=>x.id===id); if(t){t.done=!t.done; saveData();} };
-window.editTask = id => { const t=data.tasks.find(x=>x.id===id); if(t) showTaskForm(t); };
-window.deleteTask = id => { data.tasks=data.tasks.filter(x=>x.id!==id); saveData(); };
-window.deleteCourse = id => { data.courses=data.courses.filter(x=>x.id!==id); saveData(); };
-window.courseDetails = courseDetails;
-window.showAssessmentForm = showAssessmentForm;
-window.deleteAssessment = (cid,aid) => { const c=data.courses.find(x=>x.id===cid); if(c){c.assessments=c.assessments.filter(x=>x.id!==aid); saveData(); courseDetails(cid);} };
-window.deleteClass = id => { data.classes=data.classes.filter(x=>x.id!==id); saveData(); };
-window.deleteEvent = id => { data.events=data.events.filter(x=>x.id!==id); saveData(); };
-window.deleteExpense = id => { data.expenses=data.expenses.filter(x=>x.id!==id); saveData(); };
-window.deleteWorkout = id => { data.workouts=data.workouts.filter(x=>x.id!==id); saveData(); };
-window.toggleShopping = id => { const s=data.shopping.find(x=>x.id===id); if(s){s.done=!s.done; saveData();} };
-window.deleteShopping = id => { data.shopping=data.shopping.filter(x=>x.id!==id); saveData(); };
-window.closeModal = closeModal;
-window.showTaskForm = showTaskForm;
-window.showEventForm = showEventForm;
-window.showExpenseForm = showExpenseForm;
-window.showWorkoutForm = showWorkoutForm;
-window.showShoppingForm = showShoppingForm;
-window.exportBackup = exportBackup;
-window.resetAll = resetAll;
-
-document.getElementById("quickAddBtn").onclick = showQuickAdd;
-document.getElementById("navPlus").onclick = showQuickAdd;
-document.getElementById("addTaskBtn").onclick = () => showTaskForm();
-document.getElementById("addCourseBtn").onclick = showCourseForm;
-document.getElementById("addClassBtn").onclick = showClassForm;
-document.getElementById("addEventBtn").onclick = showEventForm;
-document.getElementById("setBudgetBtn").onclick = showBudgetForm;
-document.getElementById("addExpenseBtn").onclick = showExpenseForm;
-document.getElementById("addWorkoutBtn").onclick = showWorkoutForm;
-document.getElementById("addShoppingBtn").onclick = showShoppingForm;
-document.getElementById("settingsBtn").onclick = showSettings;
-
-document.querySelectorAll(".chip").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".chip").forEach(b=>b.classList.remove("active"));
-  btn.classList.add("active"); currentTaskFilter=btn.dataset.filter; renderTasks();
-}));
-
-document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
-  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
-  btn.classList.add("active");
-  document.querySelectorAll(".life-panel").forEach(p=>p.classList.remove("active"));
-  document.getElementById("life"+btn.dataset.life.charAt(0).toUpperCase()+btn.dataset.life.slice(1)).classList.add("active");
-}));
-
-setInterval(renderClock, 30000);
-renderAll();
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
-}
+setInterval(renderClock,30000);renderAll();
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NEXO" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>NEXO</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow" id="todayLabel">Hoy</div>
+        <h1 id="screenTitle">NEXO</h1>
+      </div>
+      <button class="icon-btn" id="settingsBtn" aria-label="Ajustes">⚙️</button>
+    </header>
+
+    <main class="main">
+      <section id="homeScreen" class="screen active">
+        <div class="hero-card">
+          <div>
+            <div class="eyebrow">AHORA</div>
+            <h2 id="heroTime">--:--</h2>
+            <p id="heroMessage">Organizando tu día...</p>
+          </div>
+          <button class="primary-btn" id="quickAddBtn">+ Agregar</button>
+        </div>
+
+        <div class="grid two">
+          <article class="card stat-card">
+            <span class="icon">🎓</span>
+            <div>
+              <small>Próxima clase</small>
+              <strong id="nextClass">Sin clases próximas</strong>
+            </div>
+          </article>
+          <article class="card stat-card">
+            <span class="icon">✅</span>
+            <div>
+              <small>Pendientes</small>
+              <strong id="pendingCount">0 tareas</strong>
+            </div>
+          </article>
+          <article class="card stat-card">
+            <span class="icon">📝</span>
+            <div>
+              <small>Evaluación próxima</small>
+              <strong id="nextExam">Sin evaluaciones</strong>
+            </div>
+          </article>
+          <article class="card stat-card">
+            <span class="icon">💰</span>
+            <div>
+              <small>Disponible</small>
+              <strong id="moneyAvailable">$0</strong>
+            </div>
+          </article>
+        </div>
+
+        <section class="section-block">
+          <div class="section-head">
+            <h3>Prioridad de hoy</h3>
+            <button class="text-btn" data-nav="tasks">Ver tareas</button>
+          </div>
+          <div id="priorityList" class="stack"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <h3>Resumen</h3>
+          </div>
+          <div id="dailySummary" class="card"></div>
+        </section>
+      </section>
+
+      <section id="universityScreen" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">UNIVERSIDAD</div>
+            <h2>Ramos</h2>
+          </div>
+          <button class="primary-btn small" id="addCourseBtn">+ Ramo</button>
+        </div>
+        <div id="courseList" class="stack"></div>
+
+        <section class="section-block">
+          <div class="section-head">
+            <h3>Horario semanal</h3>
+            <button class="text-btn" id="addClassBtn">+ Clase</button>
+          </div>
+          <div id="scheduleList" class="stack"></div>
+        </section>
+      </section>
+
+      <section id="tasksScreen" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">ORGANIZACIÓN</div>
+            <h2>Tareas</h2>
+          </div>
+          <button class="primary-btn small" id="addTaskBtn">+ Tarea</button>
+        </div>
+        <div class="filters">
+          <button class="chip active" data-filter="all">Todas</button>
+          <button class="chip" data-filter="today">Hoy</button>
+          <button class="chip" data-filter="pending">Pendientes</button>
+          <button class="chip" data-filter="done">Hechas</button>
+        </div>
+        <div id="taskList" class="stack"></div>
+      </section>
+
+      <section id="planScreen" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">PLAN</div>
+            <h2>Próximos días</h2>
+          </div>
+          <button class="primary-btn small" id="addEventBtn">+ Evento</button>
+        </div>
+        <div id="timelineList" class="stack"></div>
+      </section>
+
+      <section id="lifeScreen" class="screen">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">VIDA</div>
+            <h2>Todo lo demás</h2>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-life="money">Dinero</button>
+          <button class="tab" data-life="gym">Gym</button>
+          <button class="tab" data-life="shopping">Compras</button>
+        </div>
+
+        <div id="lifeMoney" class="life-panel active">
+          <div class="hero-card compact">
+            <div>
+              <div class="eyebrow">PRESUPUESTO</div>
+              <h2 id="budgetBalance">$0</h2>
+              <p id="budgetHint">Configura cuánto dinero tienes disponible.</p>
+            </div>
+            <button class="primary-btn small" id="setBudgetBtn">Editar</button>
+          </div>
+
+          <div class="section-head">
+            <h3>Movimientos</h3>
+            <button class="text-btn" id="addExpenseBtn">+ Gasto</button>
+          </div>
+          <div id="expenseList" class="stack"></div>
+        </div>
+
+        <div id="lifeGym" class="life-panel">
+          <div class="section-head">
+            <h3>Entrenamientos</h3>
+            <button class="primary-btn small" id="addWorkoutBtn">+ Entreno</button>
+          </div>
+          <div id="workoutList" class="stack"></div>
+        </div>
+
+        <div id="lifeShopping" class="life-panel">
+          <div class="section-head">
+            <h3>Lista de compras</h3>
+            <button class="primary-btn small" id="addShoppingBtn">+ Item</button>
+          </div>
+          <div id="shoppingList" class="stack"></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-screen="home">
+        <span>⌂</span><small>Hoy</small>
+      </button>
+      <button class="nav-item" data-screen="university">
+        <span>🎓</span><small>U</small>
+      </button>
+      <button class="nav-item nav-plus" id="navPlus">＋</button>
+      <button class="nav-item" data-screen="plan">
+        <span>◷</span><small>Plan</small>
+      </button>
+      <button class="nav-item" data-screen="life">
+        <span>◇</span><small>Vida</small>
+      </button>
+    </nav>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

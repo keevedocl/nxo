@@ -1,115 +1,6043 @@
-const STORAGE_KEY="nexo-pro-data-v1";
-const todayISO=()=>{const d=new Date();const l=new Date(d.getTime()-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10)};
-const defaultData={
- profile:{name:"Jugador",skin:"🙂",xp:0,level:1,coins:0,streak:0,lastActive:"",title:"Aprendiz"},
- courses:[],classes:[],tasks:[],events:[],study:[],habits:[],
- budget:{total:0},expenses:[],workouts:[],shopping:[],
- health:{water:{},sleep:{},energy:50,mood:50},
- game:{unlockedSkins:["🙂"],achievements:[],missions:{}}
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const DB_KEY = "nxo_state_v1";
+
+/* =========================================================
+   NXO — TEMAS
+========================================================= */
+
+const themes = {
+
+  midnight: {
+    name: "NXO Midnight",
+    level: 1,
+    vars: {
+      "--bg": "#08111f",
+      "--bg2": "#0b1628",
+      "--surface": "#101c2e",
+      "--surface2": "#142238",
+      "--text": "#f4f7fc",
+      "--muted": "#93a4bc",
+      "--accent": "#3977f6",
+      "--accent2": "#6aa0ff",
+      "--glass": "rgba(16,28,46,.82)"
+    }
+  },
+
+  light: {
+    name: "NXO Light",
+    level: 1,
+    vars: {
+      "--bg": "#eef3fb",
+      "--bg2": "#f7f9fc",
+      "--surface": "#ffffff",
+      "--surface2": "#edf2f8",
+      "--text": "#122033",
+      "--muted": "#6b7b90",
+      "--accent": "#346ee8",
+      "--accent2": "#5f91f7",
+      "--glass": "rgba(255,255,255,.82)",
+      "--line": "rgba(18,32,51,.08)"
+    }
+  },
+
+  ocean: {
+    name: "Ocean",
+    level: 3,
+    vars: {
+      "--bg": "#071a24",
+      "--bg2": "#0a2633",
+      "--surface": "#0f3240",
+      "--surface2": "#154150",
+      "--text": "#edfaff",
+      "--muted": "#8db7c5",
+      "--accent": "#2ba9d8",
+      "--accent2": "#65d5f7",
+      "--glass": "rgba(15,50,64,.82)"
+    }
+  },
+
+  forest: {
+    name: "Forest",
+    level: 5,
+    vars: {
+      "--bg": "#0a1712",
+      "--bg2": "#0d2119",
+      "--surface": "#133126",
+      "--surface2": "#194031",
+      "--text": "#f0fff7",
+      "--muted": "#8db19e",
+      "--accent": "#39b77a",
+      "--accent2": "#76d7a8",
+      "--glass": "rgba(19,49,38,.84)"
+    }
+  },
+
+  oled: {
+    name: "OLED Black",
+    level: 7,
+    vars: {
+      "--bg": "#000000",
+      "--bg2": "#050505",
+      "--surface": "#0c0c0c",
+      "--surface2": "#151515",
+      "--text": "#ffffff",
+      "--muted": "#9d9d9d",
+      "--accent": "#4c83ff",
+      "--accent2": "#7ca4ff",
+      "--glass": "rgba(10,10,10,.88)"
+    }
+  },
+
+  lavender: {
+    name: "Lavender",
+    level: 9,
+    vars: {
+      "--bg": "#171426",
+      "--bg2": "#211a34",
+      "--surface": "#2c2442",
+      "--surface2": "#3a3055",
+      "--text": "#faf6ff",
+      "--muted": "#b3a7c6",
+      "--accent": "#9975ff",
+      "--accent2": "#c0a9ff",
+      "--glass": "rgba(44,36,66,.84)"
+    }
+  },
+
+  sunset: {
+    name: "Sunset",
+    level: 12,
+    vars: {
+      "--bg": "#211117",
+      "--bg2": "#2a1720",
+      "--surface": "#3b2028",
+      "--surface2": "#4b2933",
+      "--text": "#fff7f2",
+      "--muted": "#c7a5a3",
+      "--accent": "#ef7b68",
+      "--accent2": "#ffad85",
+      "--glass": "rgba(59,32,40,.84)"
+    }
+  },
+
+  arctic: {
+    name: "Arctic",
+    level: 15,
+    vars: {
+      "--bg": "#0b1821",
+      "--bg2": "#10232e",
+      "--surface": "#163542",
+      "--surface2": "#1d4553",
+      "--text": "#f1fbff",
+      "--muted": "#9bc0cc",
+      "--accent": "#55c7da",
+      "--accent2": "#98e8ef",
+      "--glass": "rgba(22,53,66,.84)"
+    }
+  },
+
+  gold: {
+    name: "NXO Gold",
+    level: 20,
+    vars: {
+      "--bg": "#17140c",
+      "--bg2": "#201b0e",
+      "--surface": "#302814",
+      "--surface2": "#3d331a",
+      "--text": "#fffaf0",
+      "--muted": "#c2b28b",
+      "--accent": "#d9ad42",
+      "--accent2": "#f5d071",
+      "--glass": "rgba(48,40,20,.84)"
+    }
+  },
+
+  obsidian: {
+    name: "Obsidian",
+    level: 30,
+    vars: {
+      "--bg": "#09090f",
+      "--bg2": "#101018",
+      "--surface": "#171722",
+      "--surface2": "#20202c",
+      "--text": "#f7f7ff",
+      "--muted": "#9b9bab",
+      "--accent": "#7370ff",
+      "--accent2": "#aaa8ff",
+      "--glass": "rgba(23,23,34,.88)"
+    }
+  }
+
 };
-const skins=[
- {emoji:"🙂",name:"Base",level:1},{emoji:"😎",name:"Cool",level:2},{emoji:"🧠",name:"Cerebro",level:3},
- {emoji:"⚡",name:"Volt",level:4},{emoji:"🥷",name:"Ninja",level:5},{emoji:"👑",name:"Rey",level:7},
- {emoji:"🦾",name:"Cyborg",level:9},{emoji:"🧙",name:"Mago",level:12},{emoji:"🐉",name:"Dragón",level:15}
-];
-const rewards=[
- {level:2,text:"Skin Cool 😎"},{level:3,text:"Skin Cerebro 🧠"},{level:4,text:"Skin Volt ⚡"},
- {level:5,text:"Skin Ninja 🥷 + título Disciplinado"},{level:7,text:"Skin Rey 👑"},
- {level:9,text:"Skin Cyborg 🦾"},{level:12,text:"Skin Mago 🧙"},{level:15,text:"Skin Dragón 🐉 + título Leyenda"}
-];
-let data=loadData(),currentTaskFilter="all",focusInterval=null,focusSeconds=1500,gameActive=false,gameTimer=null,gameScore=0;
 
-function loadData(){try{const r=localStorage.getItem(STORAGE_KEY);return r?Object.assign(structuredClone(defaultData),JSON.parse(r)):structuredClone(defaultData)}catch{return structuredClone(defaultData)}}
-function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data));renderAll()}
-function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
-function money(n){return new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0}).format(Number(n||0))}
-function dateOnly(d){return new Date(d+"T12:00:00")}
-function formatDate(d){return new Intl.DateTimeFormat("es-CL",{day:"2-digit",month:"short"}).format(new Date(d))}
-function daysUntil(s){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((dateOnly(s)-t)/86400000)}
-function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function openModal(h){document.getElementById("modal").innerHTML=h;document.getElementById("modalBackdrop").classList.remove("hidden")}
-function closeModal(){document.getElementById("modalBackdrop").classList.add("hidden");document.getElementById("modal").innerHTML=""}
-function neededXp(level){return 100+(level-1)*50}
-function rankFor(level){if(level>=15)return"Leyenda";if(level>=10)return"Maestro";if(level>=7)return"Elite";if(level>=5)return"Disciplinado";if(level>=3)return"Constante";return"Novato"}
-function addXP(amount,reason=""){data.profile.xp+=amount;data.profile.coins+=Math.max(1,Math.floor(amount/4));let leveled=false;while(data.profile.xp>=neededXp(data.profile.level)){data.profile.xp-=neededXp(data.profile.level);data.profile.level++;leveled=true;unlockForLevel(data.profile.level)}data.profile.title=rankFor(data.profile.level);checkAchievements();saveData();if(leveled) setTimeout(()=>alert(`¡Subiste al nivel ${data.profile.level}!`),50)}
-function unlockForLevel(level){skins.filter(s=>s.level<=level).forEach(s=>{if(!data.game.unlockedSkins.includes(s.emoji))data.game.unlockedSkins.push(s.emoji)})}
-function checkAchievements(){const a=data.game.achievements;const add=(id)=>{if(!a.includes(id))a.push(id)};if(data.tasks.filter(t=>t.done).length>=1)add("firstTask");if(data.tasks.filter(t=>t.done).length>=10)add("tenTasks");if(data.study.reduce((s,x)=>s+Number(x.minutes||0),0)>=300)add("study300");if(data.workouts.length>=5)add("gym5");if(data.profile.level>=5)add("level5");if(data.profile.streak>=7)add("streak7")}
-function markActive(){const today=todayISO();if(data.profile.lastActive===today)return;const y=new Date();y.setDate(y.getDate()-1);const yi=new Date(y.getTime()-y.getTimezoneOffset()*60000).toISOString().slice(0,10);data.profile.streak=data.profile.lastActive===yi?data.profile.streak+1:1;data.profile.lastActive=today;localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
-markActive();
 
-function navTo(screen){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(screen+"Screen").classList.add("active");document.querySelectorAll(".nav-item[data-screen]").forEach(b=>b.classList.toggle("active",b.dataset.screen===screen));const titles={home:"NEXO",university:"Universidad",tasks:"Tareas",plan:"Plan",life:"Vida",game:"NEXO Quest"};document.getElementById("screenTitle").textContent=titles[screen]||"NEXO"}
-document.querySelectorAll(".nav-item[data-screen]").forEach(b=>b.onclick=()=>navTo(b.dataset.screen));
-document.addEventListener("click",e=>{const t=e.target.closest("[data-nav]");if(t)navTo(t.dataset.nav)});
-document.getElementById("floatingTasks").onclick=()=>navTo("tasks");
-document.getElementById("modalBackdrop").onclick=e=>{if(e.target.id==="modalBackdrop")closeModal()};
+/* =========================================================
+   FUNCIONES BÁSICAS
+========================================================= */
 
-function renderClock(){const n=new Date();document.getElementById("heroTime").textContent=n.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("es-CL",{weekday:"long",day:"numeric",month:"long"}).format(n);const h=n.getHours();document.getElementById("heroMessage").textContent=h<10?"Empieza con algo pequeño y suma progreso.":h<14?"Aprovecha la mañana para lo importante.":h<19?"Todavía queda bastante día para avanzar.":"Cierra pendientes y deja mañana preparado."}
-function renderProfile(){const p=data.profile;["profileAvatar","topAvatar","gameAvatar"].forEach(id=>document.getElementById(id).textContent=p.skin);document.getElementById("profileName").textContent=p.name;document.getElementById("gameName").textContent=p.name;document.getElementById("levelBadge").textContent=`Nivel ${p.level}`;document.getElementById("gameLevelBadge").textContent=`Nivel ${p.level}`;document.getElementById("rankText").textContent=p.title;document.getElementById("characterTitle").textContent=p.title;document.getElementById("xpText").textContent=`${p.xp} / ${neededXp(p.level)} XP`;document.getElementById("xpBar").style.width=`${Math.min(100,p.xp/neededXp(p.level)*100)}%`;document.getElementById("streakText").textContent=`🔥 ${p.streak} días`;document.getElementById("nextRewardText").textContent=`Próxima recompensa al nivel ${p.level+1}`;document.getElementById("coinCount").textContent=p.coins}
-function taskCard(t){const due=t.date?daysUntil(t.date):null;return `<div class="item"><div class="item-row"><button class="check ${t.done?"done":""}" onclick="toggleTask('${t.id}')"></button><div class="item-main"><div class="item-title ${t.done?"done-text":""}">${esc(t.title)}</div><div class="item-sub">${esc(t.course||"Personal")}</div><div class="badges">${t.date?`<span class="badge ${due<0?"urgent":due===0?"warn":""}">${due<0?"Atrasada":due===0?"Hoy":formatDate(t.date)}</span>`:""}<span class="badge">${esc(t.priority||"Media")}</span></div></div><div class="item-actions"><button class="mini-btn" onclick="editTask('${t.id}')">✎</button><button class="mini-btn" onclick="deleteTask('${t.id}')">×</button></div></div></div>`}
-function renderHome(){const pending=data.tasks.filter(t=>!t.done);document.getElementById("pendingCount").textContent=`${pending.length} tareas`;const rem=data.budget.total-data.expenses.reduce((s,e)=>s+Number(e.amount||0),0);document.getElementById("moneyAvailable").textContent=money(rem);const d=new Date().getDay(),hh=new Date().toTimeString().slice(0,5),tc=data.classes.filter(c=>Number(c.day)===d).sort((a,b)=>a.start.localeCompare(b.start)),nc=tc.find(c=>c.start>=hh)||tc[0];document.getElementById("nextClass").textContent=nc?`${nc.name} · ${nc.start}`:"Sin clases";const exams=data.courses.flatMap(c=>(c.assessments||[]).map(a=>({...a,course:c.name}))).filter(a=>a.date&&daysUntil(a.date)>=0).sort((a,b)=>dateOnly(a.date)-dateOnly(b.date));document.getElementById("nextExam").textContent=exams[0]?`${exams[0].course} · ${formatDate(exams[0].date)}`:"Sin evaluaciones";const priorities=[...pending].sort((a,b)=>({Alta:0,Media:1,Baja:2}[a.priority]-({Alta:0,Media:1,Baja:2}[b.priority])||dateOnly(a.date||"2999-01-01")-dateOnly(b.date||"2999-01-01"))).slice(0,4);document.getElementById("priorityList").innerHTML=priorities.length?priorities.map(taskCard).join(""):`<div class="empty">No tienes tareas pendientes.</div>`;const water=data.health.water[todayISO()]||0;document.getElementById("waterToday").textContent=`${water} ml`;document.getElementById("healthWater").textContent=`${water} ml`;document.getElementById("energyScore").textContent=`${data.health.energy}%`;document.getElementById("sleepHours").textContent=`${data.health.sleep[todayISO()]||0} h`;document.getElementById("dailySummary").innerHTML=`<div class="item-sub">Hoy: <strong>${tc.length}</strong> clases · <strong>${pending.filter(t=>t.date===todayISO()).length}</strong> tareas · racha de <strong>${data.profile.streak}</strong> días.</div>`;renderMissions()}
-function renderMissions(){const today=todayISO(),done=data.game.missions[today]||{};const missions=[["task","Completa una tarea",20,data.tasks.some(t=>t.done&&t.completedDate===today)],["water","Toma 1 litro de agua",15,(data.health.water[today]||0)>=1000],["study","Estudia al menos 30 min",25,data.study.some(s=>s.date===today&&Number(s.minutes)>=30)]];document.getElementById("dailyMissions").innerHTML=missions.map(([id,title,xp,condition])=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${title}</div><div class="item-sub">+${xp} XP</div></div><span class="badge ${condition||done[id]?"good":""}">${condition||done[id]?"Completada":"Pendiente"}</span></div></div>`).join("");missions.forEach(([id,,xp,condition])=>{if(condition&&!done[id]){data.game.missions[today]={...(data.game.missions[today]||{}),[id]:true};data.profile.xp+=xp;data.profile.coins+=Math.floor(xp/4)}});localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
-function renderTasks(){let tasks=[...data.tasks];if(currentTaskFilter==="today")tasks=tasks.filter(t=>t.date===todayISO());if(currentTaskFilter==="pending")tasks=tasks.filter(t=>!t.done);if(currentTaskFilter==="done")tasks=tasks.filter(t=>t.done);tasks.sort((a,b)=>Number(a.done)-Number(b.done)||dateOnly(a.date||"2999-01-01")-dateOnly(b.date||"2999-01-01"));document.getElementById("taskList").innerHTML=tasks.length?tasks.map(taskCard).join(""):`<div class="empty">No hay tareas en esta vista.</div>`}
-function renderCourses(){document.getElementById("courseList").innerHTML=data.courses.length?data.courses.map(c=>{const as=c.assessments||[],w=as.filter(a=>a.grade!==""&&a.grade!=null),tw=w.reduce((s,a)=>s+Number(a.weight||0),0),avg=tw?w.reduce((s,a)=>s+Number(a.grade)*Number(a.weight||0),0)/tw:null;return `<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(c.name)}</div><div class="item-sub">${esc(c.teacher||"Sin profesor")} ${c.room?"· "+esc(c.room):""}</div><div class="grade-box"><div class="grade-pill">Promedio <strong>${avg?avg.toFixed(2):"--"}</strong></div><div class="grade-pill">${as.length} evaluaciones</div></div></div><div class="item-actions"><button class="mini-btn" onclick="courseDetails('${c.id}')">›</button><button class="mini-btn" onclick="deleteCourse('${c.id}')">×</button></div></div></div>`}).join(""):`<div class="empty">Aún no has agregado ramos.</div>`}
-function renderSchedule(){const days=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];const l=[...data.classes].sort((a,b)=>a.day-b.day||a.start.localeCompare(b.start));document.getElementById("scheduleList").innerHTML=l.length?l.map(c=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${days[c.day]} · ${esc(c.name)}</div><div class="item-sub">${c.start}–${c.end} ${c.room?"· "+esc(c.room):""}</div></div><button class="mini-btn" onclick="deleteClass('${c.id}')">×</button></div></div>`).join(""):`<div class="empty">Agrega tus clases.</div>`}
-function renderStudy(){document.getElementById("studyList").innerHTML=data.study.length?[...data.study].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(s=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(s.subject)}</div><div class="item-sub">${formatDate(s.date)} · ${s.minutes} min</div></div><button class="mini-btn" onclick="deleteStudy('${s.id}')">×</button></div></div>`).join(""):`<div class="empty">No hay sesiones registradas.</div>`}
-function renderHabits(){document.getElementById("habitList").innerHTML=data.habits.length?data.habits.map(h=>{const done=(h.doneDates||[]).includes(todayISO());return `<div class="item"><div class="item-row"><button class="check ${done?"done":""}" onclick="toggleHabit('${h.id}')"></button><div class="item-main"><div class="item-title">${esc(h.title)}</div><div class="item-sub">+${h.xp||10} XP al completar</div></div><button class="mini-btn" onclick="deleteHabit('${h.id}')">×</button></div></div>`}).join(""):`<div class="empty">Crea hábitos diarios.</div>`}
-function renderPlan(){const items=[];data.tasks.filter(t=>t.date).forEach(t=>items.push({date:t.date,title:t.title,sub:`Tarea · ${t.course||"Personal"}`}));data.events.forEach(e=>items.push({date:e.date,title:e.title,sub:`Evento${e.time?" · "+e.time:""}`,id:e.id}));data.courses.forEach(c=>(c.assessments||[]).forEach(a=>a.date&&items.push({date:a.date,title:a.name,sub:`Evaluación · ${c.name}`})));items.sort((a,b)=>dateOnly(a.date)-dateOnly(b.date));document.getElementById("timelineList").innerHTML=items.length?items.slice(0,30).map(i=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(i.title)}</div><div class="item-sub">${formatDate(i.date)} · ${esc(i.sub)}</div></div>${i.id?`<button class="mini-btn" onclick="deleteEvent('${i.id}')">×</button>`:""}</div></div>`).join(""):`<div class="empty">Nada planificado.</div>`}
-function renderMoney(){const spent=data.expenses.reduce((s,e)=>s+Number(e.amount||0),0),rem=Number(data.budget.total||0)-spent;document.getElementById("budgetBalance").textContent=money(rem);document.getElementById("budgetHint").textContent=data.budget.total?`Presupuesto ${money(data.budget.total)} · Gastado ${money(spent)}`:"Configura tu presupuesto.";document.getElementById("expenseList").innerHTML=data.expenses.length?[...data.expenses].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(e.title)}</div><div class="item-sub">${formatDate(e.date)} · ${esc(e.category||"Otros")}</div></div><strong>${money(e.amount)}</strong><button class="mini-btn" onclick="deleteExpense('${e.id}')">×</button></div></div>`).join(""):`<div class="empty">No hay gastos.</div>`}
-function renderGym(){document.getElementById("workoutList").innerHTML=data.workouts.length?[...data.workouts].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(w=>`<div class="item"><div class="item-row"><div class="item-main"><div class="item-title">${esc(w.name)}</div><div class="item-sub">${formatDate(w.date)} · ${esc(w.details||"Sin detalles")}</div></div><button class="mini-btn" onclick="deleteWorkout('${w.id}')">×</button></div></div>`).join(""):`<div class="empty">Sin entrenamientos.</div>`}
-function renderShopping(){document.getElementById("shoppingList").innerHTML=data.shopping.length?data.shopping.map(s=>`<div class="item"><div class="item-row"><button class="check ${s.done?"done":""}" onclick="toggleShopping('${s.id}')"></button><div class="item-main"><div class="item-title ${s.done?"done-text":""}">${esc(s.title)}</div><div class="item-sub">${s.price?money(s.price):"Sin precio"} ${s.place?"· "+esc(s.place):""}</div></div><button class="mini-btn" onclick="deleteShopping('${s.id}')">×</button></div></div>`).join(""):`<div class="empty">Lista vacía.</div>`}
-function renderGame(){document.getElementById("skinGrid").innerHTML=skins.map(s=>{const unlocked=data.game.unlockedSkins.includes(s.emoji),sel=data.profile.skin===s.emoji;return `<button class="skin-card ${!unlocked?"locked":""} ${sel?"selected":""}" onclick="${unlocked?`selectSkin('${s.emoji}')`:""}"><div class="skin-emoji">${s.emoji}</div><strong>${s.name}</strong><small>${unlocked?"Desbloqueada":"Nivel "+s.level}</small></button>`}).join("");document.getElementById("rewardList").innerHTML=rewards.map(r=>`<div class="item"><div class="item-row"><div><div class="item-title">Nivel ${r.level}</div><div class="item-sub">${r.text}</div></div><span class="badge ${data.profile.level>=r.level?"good":""}">${data.profile.level>=r.level?"Desbloqueado":"Bloqueado"}</span></div></div>`).join("");const achievements=[["firstTask","Primer paso","Completa una tarea"],["tenTasks","Productivo","Completa 10 tareas"],["study300","Estudioso","Acumula 300 min de estudio"],["gym5","Constante","Registra 5 entrenamientos"],["level5","Nivel 5","Alcanza nivel 5"],["streak7","Semana perfecta","Mantén 7 días de racha"]];document.getElementById("achievementList").innerHTML=achievements.map(([id,n,d])=>`<div class="item"><div class="item-row"><div><div class="item-title">${n}</div><div class="item-sub">${d}</div></div><span class="badge ${data.game.achievements.includes(id)?"good":""}">${data.game.achievements.includes(id)?"✓":"🔒"}</span></div></div>`).join("");document.getElementById("achievementCount").textContent=data.game.achievements.length;document.getElementById("skinCount").textContent=data.game.unlockedSkins.length}
-function renderHealth(){document.getElementById("energyRange").value=data.health.energy;document.getElementById("moodRange").value=data.health.mood}
-function renderAll(){unlockForLevel(data.profile.level);checkAchievements();renderClock();renderProfile();renderHome();renderTasks();renderCourses();renderSchedule();renderStudy();renderHabits();renderPlan();renderMoney();renderGym();renderShopping();renderHealth();renderGame()}
+function uid() {
 
-function showQuickAdd(){openModal(`<h2>Agregar</h2><div class="stack"><button class="secondary-btn" onclick="closeModal();showTaskForm()">✅ Tarea</button><button class="secondary-btn" onclick="closeModal();showEventForm()">📅 Evento</button><button class="secondary-btn" onclick="closeModal();showExpenseForm()">💰 Gasto</button><button class="secondary-btn" onclick="closeModal();showStudyForm()">📚 Estudio</button><button class="secondary-btn" onclick="closeModal();showWorkoutForm()">🏋️ Entreno</button><button class="secondary-btn" onclick="closeModal();showShoppingForm()">🛒 Compra</button></div>`)}
+  return (
+    crypto.randomUUID?.() ||
+    Math.random().toString(36).slice(2) + Date.now()
+  );
 
-function showProfileForm(){openModal(`<h2>Editar perfil</h2><form class="form" id="profileForm"><label>Nombre<input required name="name" value="${esc(data.profile.name)}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("profileForm").onsubmit=e=>{e.preventDefault();data.profile.name=new FormData(e.target).get("name");saveData();closeModal()}}
-function showTaskForm(existing=null){const opts=[`<option value="">Personal</option>`,...data.courses.map(c=>`<option value="${esc(c.name)}" ${existing?.course===c.name?"selected":""}>${esc(c.name)}</option>`)].join("");openModal(`<h2>${existing?"Editar":"Nueva"} tarea</h2><form class="form" id="taskForm"><label>Título<input required name="title" value="${esc(existing?.title||"")}"></label><label>Área<select name="course">${opts}</select></label><label>Fecha<input type="date" name="date" value="${existing?.date||todayISO()}"></label><label>Prioridad<select name="priority">${["Alta","Media","Baja"].map(p=>`<option ${existing?.priority===p?"selected":""}>${p}</option>`).join("")}</select></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("taskForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(existing)Object.assign(existing,{title:f.get("title"),course:f.get("course"),date:f.get("date"),priority:f.get("priority")});else data.tasks.push({id:uid(),title:f.get("title"),course:f.get("course"),date:f.get("date"),priority:f.get("priority"),done:false});saveData();closeModal()}}
-function showCourseForm(){openModal(`<h2>Nuevo ramo</h2><form class="form" id="courseForm"><label>Nombre<input required name="name"></label><label>Profesor<input name="teacher"></label><label>Sala<input name="room"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("courseForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.courses.push({id:uid(),name:f.get("name"),teacher:f.get("teacher"),room:f.get("room"),assessments:[]});saveData();closeModal()}}
-function courseDetails(id){const c=data.courses.find(x=>x.id===id);if(!c)return;openModal(`<h2>${esc(c.name)}</h2><div class="stack">${(c.assessments||[]).map(a=>`<div class="item"><div class="item-row"><div><div class="item-title">${esc(a.name)}</div><div class="item-sub">${a.date?formatDate(a.date):"Sin fecha"} · ${a.weight}% · Nota ${a.grade||"--"}</div></div><button class="mini-btn" onclick="deleteAssessment('${c.id}','${a.id}')">×</button></div></div>`).join("")||`<div class="empty">Sin evaluaciones.</div>`}</div><div style="height:10px"></div><button class="primary-btn full" onclick="showAssessmentForm('${c.id}')">+ Evaluación</button><div style="height:8px"></div><button class="secondary-btn full" onclick="closeModal()">Cerrar</button>`)}
-function showAssessmentForm(cid){const c=data.courses.find(x=>x.id===cid);openModal(`<h2>Nueva evaluación</h2><form class="form" id="assessmentForm"><label>Nombre<input required name="name"></label><label>Fecha<input type="date" name="date"></label><label>Ponderación %<input type="number" name="weight" value="30"></label><label>Nota<input type="number" min="1" max="7" step=".1" name="grade"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="courseDetails('${cid}')">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("assessmentForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);c.assessments.push({id:uid(),name:f.get("name"),date:f.get("date"),weight:Number(f.get("weight")),grade:f.get("grade")});addXP(5);courseDetails(cid)}}
-function showClassForm(){openModal(`<h2>Nueva clase</h2><form class="form" id="classForm"><label>Nombre<input required name="name"></label><label>Día<select name="day"><option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option><option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option><option value="0">Domingo</option></select></label><label>Inicio<input type="time" required name="start"></label><label>Fin<input type="time" required name="end"></label><label>Sala<input name="room"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("classForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.classes.push({id:uid(),name:f.get("name"),day:Number(f.get("day")),start:f.get("start"),end:f.get("end"),room:f.get("room")});saveData();closeModal()}}
-function showEventForm(){openModal(`<h2>Nuevo evento</h2><form class="form" id="eventForm"><label>Título<input required name="title"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><label>Hora<input type="time" name="time"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("eventForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.events.push({id:uid(),title:f.get("title"),date:f.get("date"),time:f.get("time")});saveData();closeModal()}}
-function showBudgetForm(){openModal(`<h2>Presupuesto</h2><form class="form" id="budgetForm"><label>Dinero disponible<input type="number" required name="total" value="${data.budget.total}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("budgetForm").onsubmit=e=>{e.preventDefault();data.budget.total=Number(new FormData(e.target).get("total"));saveData();closeModal()}}
-function showExpenseForm(){openModal(`<h2>Registrar gasto</h2><form class="form" id="expenseForm"><label>Descripción<input required name="title"></label><label>Monto<input type="number" required name="amount"></label><label>Categoría<select name="category"><option>Comida</option><option>Transporte</option><option>Universidad</option><option>Gym</option><option>Compras</option><option>Otros</option></select></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("expenseForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.expenses.push({id:uid(),title:f.get("title"),amount:Number(f.get("amount")),category:f.get("category"),date:f.get("date")});saveData();closeModal()}}
-function showWorkoutForm(){openModal(`<h2>Entrenamiento</h2><form class="form" id="workoutForm"><label>Nombre<input required name="name"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><label>Detalles<textarea name="details"></textarea></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("workoutForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.workouts.push({id:uid(),name:f.get("name"),date:f.get("date"),details:f.get("details")});addXP(20);closeModal()}}
-function showShoppingForm(){openModal(`<h2>Compra pendiente</h2><form class="form" id="shoppingForm"><label>Producto<input required name="title"></label><label>Precio<input type="number" name="price"></label><label>Lugar<input name="place"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("shoppingForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.shopping.push({id:uid(),title:f.get("title"),price:Number(f.get("price")||0),place:f.get("place"),done:false});saveData();closeModal()}}
-function showStudyForm(){openModal(`<h2>Sesión de estudio</h2><form class="form" id="studyForm"><label>Materia<input required name="subject"></label><label>Minutos<input type="number" min="1" required name="minutes" value="30"></label><label>Fecha<input type="date" required name="date" value="${todayISO()}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("studyForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),m=Number(f.get("minutes"));data.study.push({id:uid(),subject:f.get("subject"),minutes:m,date:f.get("date")});addXP(Math.max(5,Math.floor(m/3)));closeModal()}}
-function showHabitForm(){openModal(`<h2>Nuevo hábito</h2><form class="form" id="habitForm"><label>Nombre<input required name="title"></label><label>XP por completar<input type="number" min="1" max="50" name="xp" value="10"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("habitForm").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);data.habits.push({id:uid(),title:f.get("title"),xp:Number(f.get("xp")),doneDates:[]});saveData();closeModal()}}
-function showSleepForm(){openModal(`<h2>Registrar sueño</h2><form class="form" id="sleepForm"><label>Horas dormidas<input type="number" min="0" max="24" step=".5" required name="hours" value="${data.health.sleep[todayISO()]||8}"></label><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button><button class="primary-btn">Guardar</button></div></form>`);document.getElementById("sleepForm").onsubmit=e=>{e.preventDefault();data.health.sleep[todayISO()]=Number(new FormData(e.target).get("hours"));saveData();closeModal()}}
+}
 
-function showSettings(){openModal(`<h2>Ajustes</h2><div class="stack"><button class="secondary-btn" onclick="exportBackup()">Exportar copia</button><label class="secondary-btn" style="text-align:center">Importar copia<input id="importFile" type="file" accept="application/json" hidden></label><button class="danger-btn" onclick="resetAll()">Borrar todos los datos</button><button class="secondary-btn" onclick="closeModal()">Cerrar</button></div>`);document.getElementById("importFile").addEventListener("change",importBackup)}
-function exportBackup(){const b=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=`nexo-pro-${todayISO()}.json`;a.click();URL.revokeObjectURL(u)}
-function importBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=Object.assign(structuredClone(defaultData),JSON.parse(r.result));saveData();closeModal();alert("Copia importada.")}catch{alert("Archivo inválido.")}};r.readAsText(f)}
-function resetAll(){if(confirm("¿Borrar todos los datos?")){data=structuredClone(defaultData);saveData();closeModal()}}
 
-window.toggleTask=id=>{const t=data.tasks.find(x=>x.id===id);if(!t)return;t.done=!t.done;t.completedDate=t.done?todayISO():"";if(t.done)addXP(15);else saveData()}
-window.editTask=id=>{const t=data.tasks.find(x=>x.id===id);if(t)showTaskForm(t)}
-window.deleteTask=id=>{data.tasks=data.tasks.filter(x=>x.id!==id);saveData()}
-window.deleteCourse=id=>{data.courses=data.courses.filter(x=>x.id!==id);saveData()}
-window.courseDetails=courseDetails;window.showAssessmentForm=showAssessmentForm
-window.deleteAssessment=(cid,aid)=>{const c=data.courses.find(x=>x.id===cid);if(c){c.assessments=c.assessments.filter(x=>x.id!==aid);saveData();courseDetails(cid)}}
-window.deleteClass=id=>{data.classes=data.classes.filter(x=>x.id!==id);saveData()}
-window.deleteEvent=id=>{data.events=data.events.filter(x=>x.id!==id);saveData()}
-window.deleteExpense=id=>{data.expenses=data.expenses.filter(x=>x.id!==id);saveData()}
-window.deleteWorkout=id=>{data.workouts=data.workouts.filter(x=>x.id!==id);saveData()}
-window.deleteShopping=id=>{data.shopping=data.shopping.filter(x=>x.id!==id);saveData()}
-window.toggleShopping=id=>{const s=data.shopping.find(x=>x.id===id);if(s){s.done=!s.done;saveData()}}
-window.deleteStudy=id=>{data.study=data.study.filter(x=>x.id!==id);saveData()}
-window.toggleHabit=id=>{const h=data.habits.find(x=>x.id===id),t=todayISO();if(!h)return;h.doneDates=h.doneDates||[];if(h.doneDates.includes(t))h.doneDates=h.doneDates.filter(x=>x!==t);else{h.doneDates.push(t);addXP(h.xp||10);return}saveData()}
-window.deleteHabit=id=>{data.habits=data.habits.filter(x=>x.id!==id);saveData()}
-window.selectSkin=e=>{if(data.game.unlockedSkins.includes(e)){data.profile.skin=e;saveData()}}
-window.closeModal=closeModal;window.showTaskForm=showTaskForm;window.showEventForm=showEventForm;window.showExpenseForm=showExpenseForm;window.showWorkoutForm=showWorkoutForm;window.showShoppingForm=showShoppingForm;window.showStudyForm=showStudyForm;window.exportBackup=exportBackup;window.resetAll=resetAll
+function todayISO() {
 
-document.getElementById("quickAddBtn").onclick=showQuickAdd;document.getElementById("navPlus").onclick=showQuickAdd;document.getElementById("editProfileBtn").onclick=showProfileForm;document.getElementById("addTaskBtn").onclick=()=>showTaskForm();document.getElementById("addCourseBtn").onclick=showCourseForm;document.getElementById("addClassBtn").onclick=showClassForm;document.getElementById("addEventBtn").onclick=showEventForm;document.getElementById("setBudgetBtn").onclick=showBudgetForm;document.getElementById("addExpenseBtn").onclick=showExpenseForm;document.getElementById("addWorkoutBtn").onclick=showWorkoutForm;document.getElementById("addShoppingBtn").onclick=showShoppingForm;document.getElementById("addStudyBtn").onclick=showStudyForm;document.getElementById("addHabitBtn").onclick=showHabitForm;document.getElementById("settingsBtn").onclick=showSettings;document.getElementById("notificationsBtn").onclick=()=>alert("En esta versión, las alertas internas aparecen dentro de NEXO. Las notificaciones push reales requieren configuración adicional.");document.getElementById("addWaterBtn").onclick=()=>{data.health.water[todayISO()]=(data.health.water[todayISO()]||0)+250;addXP(2)};document.getElementById("setSleepBtn").onclick=showSleepForm
-document.getElementById("energyRange").oninput=e=>{data.health.energy=Number(e.target.value);saveData()};document.getElementById("moodRange").oninput=e=>{data.health.mood=Number(e.target.value);saveData()}
-document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));b.classList.add("active");currentTaskFilter=b.dataset.filter;renderTasks()})
-document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".life-panel").forEach(p=>p.classList.remove("active"));document.getElementById("life"+b.dataset.life.charAt(0).toUpperCase()+b.dataset.life.slice(1)).classList.add("active")})
+  return new Date()
+    .toISOString()
+    .slice(0, 10);
 
-document.getElementById("focusBtn").onclick=()=>{if(focusInterval){clearInterval(focusInterval);focusInterval=null;document.getElementById("focusBtn").textContent="Reanudar";return}document.getElementById("focusBtn").textContent="Pausar";focusInterval=setInterval(()=>{focusSeconds--;const m=Math.floor(focusSeconds/60),s=focusSeconds%60;document.getElementById("focusState").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;if(focusSeconds<=0){clearInterval(focusInterval);focusInterval=null;focusSeconds=1500;addXP(30);alert("Sesión completada: +30 XP")}},1000)}
+}
 
-document.getElementById("startGameBtn").onclick=()=>{if(gameActive)return;gameActive=true;gameScore=0;document.getElementById("gameScore").textContent="0";document.getElementById("gameStatus").textContent="¡Toca rápido! 15 segundos";let left=15;gameTimer=setInterval(()=>{left--;document.getElementById("gameStatus").textContent=`Tiempo: ${left}s`;if(left<=0){clearInterval(gameTimer);gameActive=false;const reward=Math.max(1,Math.floor(gameScore/5));data.profile.coins+=reward;saveData();document.getElementById("gameStatus").textContent=`Ganaste ${reward} monedas`;alert(`Partida terminada: ${gameScore} toques, +${reward} monedas`) }},1000)}
-document.getElementById("gameTapBtn").onclick=()=>{if(gameActive){gameScore++;document.getElementById("gameScore").textContent=gameScore}}
 
-setInterval(renderClock,30000);renderAll();
-if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));
+/* =========================================================
+   BASE DE DATOS INICIAL
+========================================================= */
+
+const fresh = () => ({
+
+  version: 1,
+
+  profile: {
+
+    name: "Usuario",
+
+    avatar: "🧑‍🚀",
+
+    xp: 120,
+
+    level: 1,
+
+    coins: 25,
+
+    theme: "midnight"
+
+  },
+
+
+  settings: {
+
+    notifications: false,
+
+    sounds: true,
+
+    animations: true,
+
+    compact: false,
+
+    dailyGoal: 5,
+
+    waterGoal: 2500
+
+  },
+
+
+  widgets: {
+
+    next: true,
+
+    tasks: true,
+
+    habits: true,
+
+    water: true,
+
+    focus: true,
+
+    money: true,
+
+    fitness: true,
+
+    goals: true,
+
+    university: true,
+
+    score: true
+
+  },
+
+
+  tasks: [
+
+    {
+
+      id: uid(),
+
+      title: "Organizar prioridades de la semana",
+
+      due: todayISO(),
+
+      done: false,
+
+      priority: "Alta",
+
+      xp: 20
+
+    },
+
+    {
+
+      id: uid(),
+
+      title: "Estudiar 60 minutos",
+
+      due: todayISO(),
+
+      done: false,
+
+      priority: "Media",
+
+      xp: 30
+
+    }
+
+  ],
+
+
+  courses: [
+
+    {
+
+      id: uid(),
+
+      name: "Álgebra",
+
+      color: "#3977f6",
+
+      grades: [
+
+        {
+
+          name: "Prueba 1",
+
+          grade: 5.2,
+
+          weight: 30
+
+        },
+
+        {
+
+          name: "Control",
+
+          grade: 6.0,
+
+          weight: 20
+
+        }
+
+      ],
+
+      target: 4.0
+
+    },
+
+
+    {
+
+      id: uid(),
+
+      name: "Física",
+
+      color: "#45d483",
+
+      grades: [],
+
+      target: 4.0
+
+    }
+
+  ],
+
+
+  habits: [
+
+    {
+
+      id: uid(),
+
+      name: "Tomar agua",
+
+      icon: "💧",
+
+      done: false,
+
+      streak: 0
+
+    },
+
+    {
+
+      id: uid(),
+
+      name: "Moverme / entrenar",
+
+      icon: "💪",
+
+      done: false,
+
+      streak: 0
+
+    },
+
+    {
+
+      id: uid(),
+
+      name: "Orden rápido",
+
+      icon: "🧹",
+
+      done: false,
+
+      streak: 0
+
+    }
+
+  ],
+
+
+  water: {
+
+    date: todayISO(),
+
+    ml: 0
+
+  },
+
+
+  focus: {
+
+    seconds: 0,
+
+    running: false,
+
+    lastStart: null,
+
+    totalToday: 0
+
+  },
+
+
+  fitness: {
+
+    workouts: [],
+
+    weight: 70
+
+  },
+
+
+  finance: {
+
+    entries: [],
+
+    monthlyBudget: 200000
+
+  },
+
+
+  goals: [
+
+    {
+
+      id: uid(),
+
+      name: "Construir una rutina constante",
+
+      progress: 25,
+
+      target: 100
+
+    }
+
+  ],
+
+
+  inbox: [],
+
+  mood: [],
+
+  notifications: [],
+
+
+  history: {
+
+    completedTasks: 0,
+
+    studyMinutes: 0,
+
+    workouts: 0,
+
+    habitsCompleted: 0
+
+  }
+
+});
+
+
+/* =========================================================
+   GUARDADO LOCAL
+========================================================= */
+
+function load() {
+
+  try {
+
+    return Object.assign(
+
+      fresh(),
+
+      JSON.parse(
+        localStorage.getItem(DB_KEY) || "null"
+      ) || {}
+
+    );
+
+  }
+
+  catch {
+
+    return fresh();
+
+  }
+
+}
+
+
+let state = load();
+
+let route = "home";
+
+let planTab = "tasks";
+
+
+function save() {
+
+  localStorage.setItem(
+    DB_KEY,
+    JSON.stringify(state)
+  );
+
+  applyTheme();
+
+  renderHeader();
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function toast(message) {
+
+  const toast = document.createElement("div");
+
+  toast.className = "toast";
+
+  toast.textContent = message;
+
+  document.body.appendChild(toast);
+
+
+  setTimeout(() => {
+
+    toast.remove();
+
+  }, 1800);
+
+}
+
+
+/* =========================================================
+   SISTEMA DE NIVELES
+========================================================= */
+
+function levelFromXP(xp) {
+
+  return Math.max(
+
+    1,
+
+    Math.floor(
+      Math.sqrt(xp / 120)
+    ) + 1
+
+  );
+
+}
+
+
+function levelStartXP(level) {
+
+  return 120 *
+    Math.pow(
+      Math.max(0, level - 1),
+      2
+    );
+
+}
+
+
+function nextLevelXP(level) {
+
+  return 120 *
+    Math.pow(
+      level,
+      2
+    );
+
+}
+
+
+function syncLevel() {
+
+  const oldLevel =
+    state.profile.level;
+
+
+  state.profile.level =
+    levelFromXP(
+      state.profile.xp
+    );
+
+
+  if (
+    state.profile.level >
+    oldLevel
+  ) {
+
+    const difference =
+      state.profile.level -
+      oldLevel;
+
+
+    state.profile.coins +=
+      50 * difference;
+
+
+    toast(
+      `⬆️ Nivel ${state.profile.level} desbloqueado`
+    );
+
+  }
+
+}
+
+
+function addXP(
+  amount,
+  reason = ""
+) {
+
+  state.profile.xp += amount;
+
+  syncLevel();
+
+  save();
+
+
+  if (reason) {
+
+    toast(
+      `+${amount} XP · ${reason}`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   TEMAS
+========================================================= */
+
+function applyTheme() {
+
+  const theme =
+    themes[
+      state.profile.theme
+    ] ||
+    themes.midnight;
+
+
+  Object.entries(
+    theme.vars
+  ).forEach(
+    ([key, value]) => {
+
+      document
+        .documentElement
+        .style
+        .setProperty(
+          key,
+          value
+        );
+
+    }
+  );
+
+
+  document
+    .querySelector(
+      'meta[name="theme-color"]'
+    )
+    ?.setAttribute(
+      "content",
+      theme.vars["--bg"] ||
+      "#08111f"
+    );
+
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+function renderHeader() {
+
+  const hour =
+    new Date().getHours();
+
+
+  const part =
+    hour < 12
+      ? "Buenos días"
+      : hour < 20
+        ? "Buenas tardes"
+        : "Buenas noches";
+
+
+  $("#greeting").textContent =
+    `${part}, ${state.profile.name}`;
+
+
+  $("#todayLabel").textContent =
+    new Intl.DateTimeFormat(
+      "es-CL",
+      {
+
+        weekday: "long",
+
+        day: "numeric",
+
+        month: "long"
+
+      }
+    )
+      .format(
+        new Date()
+      )
+      .toUpperCase();
+
+}
+
+
+/* =========================================================
+   UTILIDADES
+========================================================= */
+
+function percent(
+  number,
+  total
+) {
+
+  return total
+    ? Math.round(
+        number /
+        total *
+        100
+      )
+    : 0;
+
+}
+
+
+function todayTasks() {
+
+  return state.tasks.filter(
+
+    task =>
+      task.due ===
+      todayISO()
+
+  );
+
+}
+
+
+/* =========================================================
+   NXO SCORE
+========================================================= */
+
+function nxoScore() {
+
+  const tasks =
+    todayTasks();
+
+
+  const taskScore =
+    tasks.length
+      ? percent(
+          tasks.filter(
+            task => task.done
+          ).length,
+          tasks.length
+        )
+      : 70;
+
+
+  const habitScore =
+    state.habits.length
+      ? percent(
+          state.habits.filter(
+            habit => habit.done
+          ).length,
+          state.habits.length
+        )
+      : 70;
+
+
+  const waterScore =
+    Math.min(
+      100,
+      percent(
+        state.water.ml,
+        state.settings.waterGoal
+      )
+    );
+
+
+  const focusScore =
+    Math.min(
+      100,
+      Math.round(
+        state.focus.totalToday /
+        60
+      )
+    );
+
+
+  return Math.round(
+
+    taskScore * 0.35 +
+
+    habitScore * 0.25 +
+
+    waterScore * 0.15 +
+
+    focusScore * 0.25
+
+  );
+
+}
+
+
+/* =========================================================
+   NAVEGACIÓN
+========================================================= */
+
+function render() {
+
+  $$(".nav-item").forEach(
+    button => {
+
+      button.classList.toggle(
+
+        "active",
+
+        button.dataset.route ===
+        route
+
+      );
+
+    }
+  );
+
+
+  if (route === "home")
+    renderHome();
+
+
+  if (route === "plan")
+    renderPlan();
+
+
+  if (route === "progress")
+    renderProgress();
+
+
+  if (route === "life")
+    renderLife();
+
+
+  if (route === "profile")
+    renderProfile();
+
+
+  save();
+
+}
+
+
+function go(newRoute) {
+
+  route =
+    newRoute;
+
+  render();
+
+}
+
+
+/* =========================================================
+   TÍTULOS DE SECCIÓN
+========================================================= */
+
+function sectionTitle(
+  title,
+  action = "",
+  onclick = ""
+) {
+
+  return `
+
+    <div class="section-title">
+
+      <h3>
+        ${title}
+      </h3>
+
+      ${
+        action
+
+        ?
+
+        `
+        <button
+          onclick="${onclick}"
+        >
+          ${action}
+        </button>
+        `
+
+        :
+
+        ""
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   HOME
+========================================================= */
+
+function renderHome() {
+
+  const level =
+    state.profile.level;
+
+
+  const start =
+    levelStartXP(level);
+
+
+  const end =
+    nextLevelXP(level);
+
+
+  const progress =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        percent(
+          state.profile.xp -
+          start,
+
+          end -
+          start
+        )
+      )
+    );
+
+
+  const tasks =
+    todayTasks();
+
+
+  const completed =
+    tasks.filter(
+      task => task.done
+    ).length;
+
+
+  const enabled =
+    state.widgets;
+
+
+  $("#view").innerHTML = `
+
+    <section class="hero">
+
+      <div class="hero-row">
+
+        <div style="flex:1">
+
+          <div class="level">
+
+            NIVEL ${level}
+            ·
+            ${state.profile.coins} NXC
+
+          </div>
+
+
+          <h2>
+
+            ${state.profile.avatar}
+
+            ${state.profile.name}
+
+          </h2>
+
+
+          <div class="muted">
+
+            ${
+              state.profile.xp -
+              start
+            }
+
+            /
+
+            ${
+              end -
+              start
+            }
+
+            XP para el siguiente nivel
+
+          </div>
+
+
+          <div
+            class="progress"
+            style="margin-top:10px"
+          >
+
+            <span
+              style="width:${progress}%"
+            ></span>
+
+          </div>
+
+        </div>
+
+
+        <div class="score-orb">
+
+          <div class="center">
+
+            <strong>
+
+              ${nxoScore()}
+
+            </strong>
+
+            <div
+              class="muted"
+              style="font-size:10px"
+            >
+
+              NXO SCORE
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    ${sectionTitle(
+      "Tu día",
+      "Editar",
+      "openWidgetEditor()"
+    )}
+
+
+    <div class="grid">
+
+
+      ${
+        enabled.tasks
+
+        ?
+
+        `
+
+        <article class="card">
+
+          <div class="label">
+            ✅ TAREAS
+          </div>
+
+          <div class="metric">
+
+            ${completed}
+            /
+            ${tasks.length}
+
+          </div>
+
+          <div class="muted">
+
+            ${
+              tasks.length
+
+              ?
+
+              Math.max(
+                0,
+                tasks.length -
+                completed
+              ) +
+              " pendientes"
+
+              :
+
+              "Día libre"
+            }
+
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+
+      ${
+        enabled.water
+
+        ?
+
+        `
+
+        <article
+          class="card"
+          onclick="addWater(250)"
+        >
+
+          <div class="label">
+            💧 AGUA
+          </div>
+
+          <div class="metric">
+
+            ${
+              (
+                state.water.ml /
+                1000
+              ).toFixed(1)
+            }L
+
+          </div>
+
+          <div class="muted">
+
+            Meta
+
+            ${
+              (
+                state.settings
+                  .waterGoal /
+                1000
+              ).toFixed(1)
+            }L
+
+            · toca +250ml
+
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+
+      ${
+        enabled.focus
+
+        ?
+
+        `
+
+        <article
+          class="card"
+          onclick="openFocus()"
+        >
+
+          <div class="label">
+            ⏱️ FOCUS
+          </div>
+
+          <div class="metric">
+
+            ${
+              Math.floor(
+                state.focus
+                  .totalToday /
+                60
+              )
+            }h
+
+            ${
+              state.focus
+                .totalToday %
+              60
+            }m
+
+          </div>
+
+          <div class="muted">
+            Estudio hoy
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+
+      ${
+        enabled.money
+
+        ?
+
+        `
+
+        <article class="card">
+
+          <div class="label">
+            💰 MES
+          </div>
+
+          <div class="metric">
+
+            $${monthSpent()
+              .toLocaleString(
+                "es-CL"
+              )}
+
+          </div>
+
+          <div class="muted">
+
+            de
+
+            $${state.finance
+              .monthlyBudget
+              .toLocaleString(
+                "es-CL"
+              )}
+
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+
+      ${
+        enabled.habits
+
+        ?
+
+        `
+
+        <article
+          class="card full"
+        >
+
+          <div class="label">
+            🔥 HÁBITOS
+          </div>
+
+          <div class="metric">
+
+            ${
+              state.habits.filter(
+                habit =>
+                  habit.done
+              ).length
+            }
+
+            /
+
+            ${state.habits.length}
+
+          </div>
+
+
+          <div class="progress">
+
+            <span
+              style="
+              width:
+              ${
+                percent(
+
+                  state.habits
+                    .filter(
+                      habit =>
+                        habit.done
+                    )
+                    .length,
+
+                  state.habits
+                    .length
+
+                )
+              }%
+              "
+            ></span>
+
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+
+      ${
+        enabled.goals &&
+        state.goals[0]
+
+        ?
+
+        `
+
+        <article
+          class="card full"
+        >
+
+          <div class="label">
+
+            🎯 OBJETIVO PRINCIPAL
+
+          </div>
+
+
+          <div
+            style="
+            font-weight:800;
+            margin:6px 0
+            "
+          >
+
+            ${
+              esc(
+                state.goals[0]
+                  .name
+              )
+            }
+
+          </div>
+
+
+          <div class="progress">
+
+            <span
+              style="
+              width:
+              ${
+                Math.min(
+
+                  100,
+
+                  state.goals[0]
+                    .progress /
+
+                  state.goals[0]
+                    .target *
+
+                  100
+
+                )
+              }%
+              "
+            ></span>
+
+          </div>
+
+        </article>
+
+        `
+
+        :
+
+        ""
+      }
+
+    </div>
+
+
+    ${sectionTitle(
+      "Misiones de hoy",
+      "Ver plan",
+      "go('plan')"
+    )}
+
+
+    <div class="list">
+
+      ${
+        tasks.length
+
+        ?
+
+        tasks
+          .slice(0, 5)
+          .map(taskItem)
+          .join("")
+
+        :
+
+        `
+
+        <div class="card muted">
+
+          No tienes tareas para hoy.
+
+          Pulsa ＋ para añadir una.
+
+        </div>
+
+        `
+      }
+
+    </div>
+
+
+    ${sectionTitle(
+      "NXO Coach"
+    )}
+
+
+    <div class="card">
+
+      ${coachMessage()}
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   NXO COACH
+========================================================= */
+
+function coachMessage() {
+
+  const tasks =
+    todayTasks();
+
+
+  const pending =
+    tasks.filter(
+      task => !task.done
+    ).length;
+
+
+  if (pending >= 5) {
+
+    return `
+
+      Tienes
+
+      <b>${pending} tareas pendientes</b>.
+
+      Prioriza solo las 3 más importantes
+
+      y mueve el resto si es necesario.
+
+    `;
+
+  }
+
+
+  if (
+    state.focus.totalToday < 30 &&
+    pending
+  ) {
+
+    return `
+
+      Aún llevas poco tiempo de enfoque hoy.
+
+      Una sesión de
+
+      <b>30 minutos</b>
+
+      puede darte impulso sin saturar el día.
+
+    `;
+
+  }
+
+
+  if (
+    state.water.ml <
+    state.settings.waterGoal *
+    0.4
+  ) {
+
+    return `
+
+      Tu registro de agua está bajo.
+
+      Puedes tocar la tarjeta de agua
+
+      para sumar
+
+      <b>250 ml</b>.
+
+    `;
+
+  }
+
+
+  return `
+
+    Vas bien.
+
+    Tu NXO Score actual es
+
+    <b>${nxoScore()}/100</b>.
+
+    Mantén el día simple y consistente.
+
+  `;
+
+}
+
+
+/* =========================================================
+   TAREAS
+========================================================= */
+
+function taskItem(task) {
+
+  return `
+
+    <div class="item">
+
+      <button
+        class="
+          check
+          ${task.done ? "done" : ""}
+        "
+        onclick="
+          toggleTask('${task.id}')
+        "
+      >
+
+        ${task.done ? "✓" : ""}
+
+      </button>
+
+
+      <div class="item-main">
+
+        <div class="item-title">
+
+          ${esc(task.title)}
+
+        </div>
+
+        <div class="item-sub">
+
+          ${task.due}
+          ·
+          ${task.priority}
+
+        </div>
+
+      </div>
+
+
+      <span class="badge">
+
+        +${task.xp || 20} XP
+
+      </span>
+
+    </div>
+
+  `;
+
+}
+
+
+function toggleTask(id) {
+
+  const task =
+    state.tasks.find(
+      task => task.id === id
+    );
+
+
+  if (!task)
+    return;
+
+
+  task.done =
+    !task.done;
+
+
+  if (task.done) {
+
+    state.history
+      .completedTasks++;
+
+
+    addXP(
+      task.xp || 20,
+      "Tarea completada"
+    );
+
+  }
+
+  else {
+
+    state.profile.xp =
+      Math.max(
+        0,
+        state.profile.xp -
+        (task.xp || 20)
+      );
+
+  }
+
+
+  save();
+
+  render();
+
+}
+
+
+/* =========================================================
+   AGUA
+========================================================= */
+
+function addWater(ml) {
+
+  if (
+    state.water.date !==
+    todayISO()
+  ) {
+
+    state.water = {
+
+      date: todayISO(),
+
+      ml: 0
+
+    };
+
+  }
+
+
+  state.water.ml += ml;
+
+
+  save();
+
+
+  toast(
+    `💧 +${ml} ml`
+  );
+
+
+  render();
+
+}
+
+
+/* =========================================================
+   PLAN
+========================================================= */
+
+function renderPlan() {
+
+  $("#view").innerHTML = `
+
+    <div class="tabs">
+
+      ${
+        [
+          "tasks",
+          "university",
+          "goals",
+          "inbox"
+        ]
+        .map(tab => `
+
+          <button
+            class="
+              tab
+              ${
+                planTab === tab
+                ? "active"
+                : ""
+              }
+            "
+            onclick="
+              setPlanTab('${tab}')
+            "
+          >
+
+            ${
+              {
+
+                tasks: "Tareas",
+
+                university:
+                  "Universidad",
+
+                goals:
+                  "Objetivos",
+
+                inbox:
+                  "Inbox"
+
+              }[tab]
+            }
+
+          </button>
+
+        `)
+        .join("")
+      }
+
+    </div>
+
+
+    <div id="planBody"></div>
+
+  `;
+
+
+  renderPlanBody();
+
+}
+
+
+function setPlanTab(tab) {
+
+  planTab = tab;
+
+  renderPlan();
+
+}
+
+
+/* =========================================================
+   CONTENIDO PLAN
+========================================================= */
+
+function renderPlanBody() {
+
+  const element =
+    $("#planBody");
+
+
+  if (
+    planTab ===
+    "tasks"
+  ) {
+
+    element.innerHTML =
+
+      sectionTitle(
+        "Todas las tareas"
+      )
+
+      +
+
+      `
+
+      <div class="list">
+
+        ${
+          state.tasks
+            .map(taskItem)
+            .join("")
+
+          ||
+
+          `
+
+          <div class="card muted">
+
+            Sin tareas.
+
+          </div>
+
+          `
+        }
+
+      </div>
+
+      `;
+
+  }
+
+
+  if (
+    planTab ===
+    "university"
+  ) {
+
+    element.innerHTML =
+
+      sectionTitle(
+        "Universidad",
+        "Añadir ramo",
+        "openAddCourse()"
+      )
+
+      +
+
+      `
+
+      <div class="list">
+
+        ${
+          state.courses
+            .map(courseCard)
+            .join("")
+        }
+
+      </div>
+
+      `;
+
+  }
+
+
+  if (
+    planTab ===
+    "goals"
+  ) {
+
+    element.innerHTML =
+
+      sectionTitle(
+        "Objetivos",
+        "Añadir",
+        "openAddGoal()"
+      )
+
+      +
+
+      `
+
+      <div class="list">
+
+        ${
+          state.goals
+            .map(goal => `
+
+              <div class="card">
+
+                <b>
+
+                  ${esc(goal.name)}
+
+                </b>
+
+
+                <div
+                  class="muted"
+                  style="margin:6px 0"
+                >
+
+                  ${goal.progress}
+
+                  /
+
+                  ${goal.target}
+
+                </div>
+
+
+                <div class="progress">
+
+                  <span
+                    style="
+                    width:
+                    ${
+                      Math.min(
+                        100,
+                        goal.progress /
+                        goal.target *
+                        100
+                      )
+                    }%
+                    "
+                  ></span>
+
+                </div>
+
+
+                <div
+                  class="btn-row"
+                  style="margin-top:10px"
+                >
+
+                  <button
+                    class="btn secondary"
+                    onclick="
+                      bumpGoal(
+                        '${goal.id}',
+                        5
+                      )
+                    "
+                  >
+
+                    +5
+
+                  </button>
+
+
+                  <button
+                    class="btn secondary"
+                    onclick="
+                      bumpGoal(
+                        '${goal.id}',
+                        10
+                      )
+                    "
+                  >
+
+                    +10
+
+                  </button>
+
+                </div>
+
+              </div>
+
+            `)
+            .join("")
+        }
+
+      </div>
+
+      `;
+
+  }
+
+
+  if (
+    planTab ===
+    "inbox"
+  ) {
+
+    element.innerHTML =
+
+      sectionTitle(
+        "Brain dump"
+      )
+
+      +
+
+      `
+
+      <div class="field">
+
+        <textarea
+          id="inboxText"
+          placeholder="
+          Escribe cualquier idea,
+          pendiente o cosa que
+          no quieras olvidar...
+          "
+        ></textarea>
+
+      </div>
+
+
+      <button
+        class="btn"
+        onclick="addInbox()"
+      >
+
+        Guardar en Inbox
+
+      </button>
+
+
+      <div
+        class="list"
+        style="margin-top:12px"
+      >
+
+        ${
+          state.inbox
+            .map(item => `
+
+              <div class="item">
+
+                <div class="item-main">
+
+                  ${esc(item.text)}
+
+                  <div class="item-sub">
+
+                    ${item.date}
+
+                  </div>
+
+                </div>
+
+
+                <button
+                  class="btn secondary"
+                  onclick="
+                    inboxToTask(
+                      '${item.id}'
+                    )
+                  "
+                >
+
+                  → Tarea
+
+                </button>
+
+              </div>
+
+            `)
+            .join("")
+        }
+
+      </div>
+
+      `;
+
+  }
+
+}
+
+
+/* =========================================================
+   UNIVERSIDAD
+========================================================= */
+
+function courseCard(course) {
+
+  const average =
+    courseAverage(course);
+
+
+  return `
+
+    <div class="card">
+
+      <div
+        style="
+        display:flex;
+        justify-content:space-between
+        "
+      >
+
+        <b>
+
+          ${esc(course.name)}
+
+        </b>
+
+
+        <span class="badge">
+
+          ${course.grades.length}
+          notas
+
+        </span>
+
+      </div>
+
+
+      <div class="metric">
+
+        ${
+          average
+            ? average.toFixed(2)
+            : "—"
+        }
+
+      </div>
+
+
+      <div class="muted">
+
+        Promedio ponderado registrado
+
+      </div>
+
+
+      <div
+        class="btn-row"
+        style="margin-top:10px"
+      >
+
+        <button
+          class="btn secondary"
+          onclick="
+            openCourse(
+              '${course.id}'
+            )
+          "
+        >
+
+          Ver ramo
+
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+function courseAverage(course) {
+
+  const totalWeight =
+    course.grades.reduce(
+
+      (total, grade) =>
+        total +
+        Number(
+          grade.weight || 0
+        ),
+
+      0
+
+    );
+
+
+  if (!totalWeight)
+    return 0;
+
+
+  return (
+
+    course.grades.reduce(
+
+      (total, grade) =>
+
+        total +
+
+        Number(grade.grade) *
+
+        Number(
+          grade.weight || 0
+        ),
+
+      0
+
+    )
+
+    /
+
+    totalWeight
+
+  );
+
+}
+
+
+function requiredGrade(
+  course,
+  remainingWeight
+) {
+
+  const obtained =
+    course.grades.reduce(
+
+      (total, grade) =>
+
+        total +
+
+        Number(grade.grade) *
+
+        Number(
+          grade.weight || 0
+        ) /
+        100,
+
+      0
+
+    );
+
+
+  return (
+
+    course.target -
+    obtained
+
+  )
+
+  /
+
+  (
+    remainingWeight /
+    100
+  );
+
+}
+
+
+/* =========================================================
+   PROGRESO
+========================================================= */
+
+function renderProgress() {
+
+  $("#view").innerHTML = `
+
+    ${sectionTitle(
+      "Tu progreso"
+    )}
+
+
+    <div class="grid">
+
+
+      <article class="card">
+
+        <div class="label">
+          ⚡ XP TOTAL
+        </div>
+
+        <div class="metric">
+
+          ${state.profile.xp}
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          ⬆️ NIVEL
+        </div>
+
+        <div class="metric">
+
+          ${state.profile.level}
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          ✅ TAREAS
+        </div>
+
+        <div class="metric">
+
+          ${
+            state.history
+              .completedTasks
+          }
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          📚 ESTUDIO
+        </div>
+
+        <div class="metric">
+
+          ${
+            Math.round(
+              state.history
+                .studyMinutes /
+              60
+            )
+          }h
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          💪 GYM
+        </div>
+
+        <div class="metric">
+
+          ${
+            state.history
+              .workouts
+          }
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          🔥 HÁBITOS
+        </div>
+
+        <div class="metric">
+
+          ${
+            state.history
+              .habitsCompleted
+          }
+
+        </div>
+
+      </article>
+
+
+      <article
+        class="card full"
+      >
+
+        <div class="label">
+
+          NXO SCORE
+
+        </div>
+
+
+        <div class="metric">
+
+          ${nxoScore()}/100
+
+        </div>
+
+
+        <div class="progress">
+
+          <span
+            style="
+            width:
+            ${nxoScore()}%
+            "
+          ></span>
+
+        </div>
+
+      </article>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Reportes"
+    )}
+
+
+    <div class="card">
+
+      <p class="muted">
+
+        Genera un PDF con tus
+        estadísticas actuales,
+        universidad, hábitos,
+        finanzas y progreso.
+
+      </p>
+
+
+      <div class="btn-row">
+
+        <button
+          class="btn"
+          onclick="generatePDF()"
+        >
+
+          Generar PDF
+
+        </button>
+
+
+        <button
+          class="btn secondary"
+          onclick="window.print()"
+        >
+
+          Imprimir / Guardar PDF
+
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   VIDA
+========================================================= */
+
+function renderLife() {
+
+  $("#view").innerHTML = `
+
+    ${sectionTitle(
+      "Hábitos",
+      "Añadir",
+      "openAddHabit()"
+    )}
+
+
+    <div class="list">
+
+      ${
+        state.habits
+          .map(habit => `
+
+            <div class="item">
+
+              <button
+                class="
+                  check
+                  ${
+                    habit.done
+                      ? "done"
+                      : ""
+                  }
+                "
+                onclick="
+                  toggleHabit(
+                    '${habit.id}'
+                  )
+                "
+              >
+
+                ${
+                  habit.done
+                    ? "✓"
+                    : ""
+                }
+
+              </button>
+
+
+              <div class="item-main">
+
+                <div class="item-title">
+
+                  ${habit.icon}
+
+                  ${esc(habit.name)}
+
+                </div>
+
+
+                <div class="item-sub">
+
+                  Racha
+
+                  ${habit.streak || 0}
+
+                  días
+
+                </div>
+
+              </div>
+
+            </div>
+
+          `)
+          .join("")
+      }
+
+    </div>
+
+
+    ${sectionTitle(
+      "Focus"
+    )}
+
+
+    <div class="card center">
+
+      <div class="focus-clock">
+
+        ${
+          formatTime(
+            getFocusSeconds()
+          )
+        }
+
+      </div>
+
+
+      <button
+        class="btn"
+        onclick="openFocus()"
+      >
+
+        Abrir Focus
+
+      </button>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Fitness",
+      "Registrar",
+      "openWorkout()"
+    )}
+
+
+    <div class="grid">
+
+
+      <article class="card">
+
+        <div class="label">
+          PESO
+        </div>
+
+        <div class="metric">
+
+          ${state.fitness.weight}
+          kg
+
+        </div>
+
+      </article>
+
+
+      <article class="card">
+
+        <div class="label">
+          SESIONES
+        </div>
+
+        <div class="metric">
+
+          ${
+            state.fitness
+              .workouts
+              .length
+          }
+
+        </div>
+
+      </article>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Dinero",
+      "Añadir gasto",
+      "openExpense()"
+    )}
+
+
+    <div class="card">
+
+      <div class="label">
+
+        GASTADO ESTE MES
+
+      </div>
+
+
+      <div class="metric">
+
+        $${monthSpent()
+          .toLocaleString(
+            "es-CL"
+          )}
+
+      </div>
+
+
+      <div class="progress">
+
+        <span
+          style="
+          width:
+          ${
+            Math.min(
+
+              100,
+
+              monthSpent() /
+
+              state.finance
+                .monthlyBudget *
+
+              100
+
+            )
+          }%
+          "
+        ></span>
+
+      </div>
+
+
+      <div
+        class="muted"
+        style="margin-top:7px"
+      >
+
+        Presupuesto:
+
+        $${state.finance
+          .monthlyBudget
+          .toLocaleString(
+            "es-CL"
+          )}
+
+      </div>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Check-in"
+    )}
+
+
+    <div class="card">
+
+      <div class="quick-grid">
+
+        ${
+          [
+            "😫",
+            "😕",
+            "😐",
+            "🙂",
+            "😄"
+          ]
+          .map(
+            (emoji, index) => `
+
+              <button
+                class="quick"
+                onclick="
+                  logMood(
+                    ${index + 1},
+                    '${emoji}'
+                  )
+                "
+              >
+
+                <span>
+
+                  ${emoji}
+
+                </span>
+
+                <small>
+
+                  ${index + 1}/5
+
+                </small>
+
+              </button>
+
+            `
+          )
+          .join("")
+        }
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   HÁBITOS
+========================================================= */
+
+function toggleHabit(id) {
+
+  const habit =
+    state.habits.find(
+      habit =>
+        habit.id === id
+    );
+
+
+  if (!habit)
+    return;
+
+
+  habit.done =
+    !habit.done;
+
+
+  if (habit.done) {
+
+    habit.streak =
+      (habit.streak || 0) +
+      1;
+
+
+    state.history
+      .habitsCompleted++;
+
+
+    addXP(
+      10,
+      "Hábito"
+    );
+
+  }
+
+  else {
+
+    habit.streak =
+      Math.max(
+
+        0,
+
+        (habit.streak || 0) -
+        1
+
+      );
+
+  }
+
+
+  save();
+
+  render();
+
+}
+
+
+/* =========================================================
+   ESTADO DE ÁNIMO
+========================================================= */
+
+function logMood(
+  value,
+  emoji
+) {
+
+  state.mood.push({
+
+    date:
+      new Date()
+        .toISOString(),
+
+    value
+
+  });
+
+
+  save();
+
+
+  toast(
+    `${emoji} Check-in guardado`
+  );
+
+}
+
+
+/* =========================================================
+   PERFIL
+========================================================= */
+
+function renderProfile() {
+
+  $("#view").innerHTML = `
+
+    <section
+      class="hero center"
+    >
+
+      <div
+        style="font-size:54px"
+      >
+
+        ${state.profile.avatar}
+
+      </div>
+
+
+      <h2>
+
+        ${esc(
+          state.profile.name
+        )}
+
+      </h2>
+
+
+      <div class="badge">
+
+        Nivel
+        ${state.profile.level}
+
+        ·
+
+        ${state.profile.xp}
+        XP
+
+        ·
+
+        ${state.profile.coins}
+        NXC
+
+      </div>
+
+    </section>
+
+
+    ${sectionTitle(
+      "Personalización"
+    )}
+
+
+    <div class="card">
+
+      <button
+        class="btn"
+        onclick="openThemes()"
+      >
+
+        Cambiar tema
+
+      </button>
+
+
+      <button
+        class="btn secondary"
+        onclick="
+          openProfileEdit()
+        "
+      >
+
+        Editar perfil
+
+      </button>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Datos y privacidad"
+    )}
+
+
+    <div class="card">
+
+      <div class="btn-row">
+
+        <button
+          class="btn secondary"
+          onclick="
+            exportBackup()
+          "
+        >
+
+          Exportar backup
+
+        </button>
+
+
+        <button
+          class="btn secondary"
+          onclick="
+            $('#importFile').click()
+          "
+        >
+
+          Importar backup
+
+        </button>
+
+
+        <button
+          class="btn secondary"
+          onclick="
+            generatePDF()
+          "
+        >
+
+          PDF de progreso
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Notificaciones"
+    )}
+
+
+    <div class="card">
+
+      <p class="muted">
+
+        Activa permisos y prueba
+        una notificación.
+
+        Los avisos programados
+        cuando NXO está totalmente
+        cerrada requieren un
+        servidor Web Push.
+
+      </p>
+
+
+      <div class="btn-row">
+
+        <button
+          class="btn"
+          onclick="
+            enableNotifications()
+          "
+        >
+
+          Activar notificaciones
+
+        </button>
+
+
+        <button
+          class="btn secondary"
+          onclick="
+            testNotification()
+          "
+        >
+
+          Probar
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    ${sectionTitle(
+      "Sistema"
+    )}
+
+
+    <div class="card">
+
+      <div class="btn-row">
+
+        <button
+          class="btn secondary"
+          onclick="
+            openSettings()
+          "
+        >
+
+          Configuración
+
+        </button>
+
+
+        <button
+          class="btn danger"
+          onclick="
+            resetNXO()
+          "
+        >
+
+          Restablecer NXO
+
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   SHEET
+========================================================= */
+
+function openSheet(html) {
+
+  $("#sheetContent")
+    .innerHTML =
+    html;
+
+
+  $("#sheet")
+    .showModal();
+
+}
+
+
+function closeSheet() {
+
+  try {
+
+    $("#sheet").close();
+
+  }
+
+  catch {}
+
+}
+
+
+/* =========================================================
+   MENÚ RÁPIDO
+========================================================= */
+
+function openQuickAdd() {
+
+  openSheet(`
+
+    <h2>
+      Añadir a NXO
+    </h2>
+
+
+    <div class="quick-grid">
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openAddTask()
+        "
+      >
+
+        <span>✅</span>
+
+        <small>
+          Tarea
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openAddHabit()
+        "
+      >
+
+        <span>🔥</span>
+
+        <small>
+          Hábito
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openAddCourse()
+        "
+      >
+
+        <span>🎓</span>
+
+        <small>
+          Ramo
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openAddGoal()
+        "
+      >
+
+        <span>🎯</span>
+
+        <small>
+          Objetivo
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openExpense()
+        "
+      >
+
+        <span>💰</span>
+
+        <small>
+          Gasto
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openWorkout()
+        "
+      >
+
+        <span>💪</span>
+
+        <small>
+          Gym
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          openFocus()
+        "
+      >
+
+        <span>⏱️</span>
+
+        <small>
+          Focus
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          goInbox()
+        "
+      >
+
+        <span>🧠</span>
+
+        <small>
+          Inbox
+        </small>
+
+      </button>
+
+
+      <button
+        type="button"
+        class="quick"
+        onclick="
+          addWater(250);
+          closeSheet()
+        "
+      >
+
+        <span>💧</span>
+
+        <small>
+          +250 ml
+        </small>
+
+      </button>
+
+    </div>
+
+  `);
+
+}
+
+
+/* =========================================================
+   AÑADIR TAREA
+========================================================= */
+
+function openAddTask() {
+
+  openSheet(`
+
+    <h2>
+      Nueva tarea
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Título
+      </label>
+
+      <input
+        id="taskTitle"
+        placeholder="
+          ¿Qué tienes que hacer?
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Fecha
+      </label>
+
+      <input
+        id="taskDue"
+        type="date"
+        value="${todayISO()}"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Prioridad
+      </label>
+
+
+      <select
+        id="taskPriority"
+      >
+
+        <option>
+          Alta
+        </option>
+
+        <option selected>
+          Media
+        </option>
+
+        <option>
+          Baja
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="addTask()"
+    >
+
+      Guardar tarea
+
+    </button>
+
+  `);
+
+}
+
+
+function addTask() {
+
+  const title =
+    $("#taskTitle")
+      .value
+      .trim();
+
+
+  if (!title)
+    return;
+
+
+  state.tasks.unshift({
+
+    id: uid(),
+
+    title,
+
+    due:
+      $("#taskDue").value ||
+      todayISO(),
+
+    priority:
+      $("#taskPriority")
+        .value,
+
+    done: false,
+
+    xp: 20
+
+  });
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+  toast(
+    "Tarea añadida"
+  );
+
+}
+
+
+/* =========================================================
+   AÑADIR HÁBITO
+========================================================= */
+
+function openAddHabit() {
+
+  openSheet(`
+
+    <h2>
+      Nuevo hábito
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Nombre
+      </label>
+
+      <input
+        id="habitName"
+        placeholder="
+          Ej. Leer 20 minutos
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Emoji
+      </label>
+
+      <input
+        id="habitIcon"
+        value="🔥"
+      >
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="addHabit()"
+    >
+
+      Guardar hábito
+
+    </button>
+
+  `);
+
+}
+
+
+function addHabit() {
+
+  const name =
+    $("#habitName")
+      .value
+      .trim();
+
+
+  if (!name)
+    return;
+
+
+  state.habits.push({
+
+    id: uid(),
+
+    name,
+
+    icon:
+      $("#habitIcon").value ||
+      "🔥",
+
+    done: false,
+
+    streak: 0
+
+  });
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+}
+
+
+/* =========================================================
+   AÑADIR RAMO
+========================================================= */
+
+function openAddCourse() {
+
+  openSheet(`
+
+    <h2>
+      Nuevo ramo
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Nombre
+      </label>
+
+      <input
+        id="courseName"
+        placeholder="
+          Ej. Cálculo II
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Nota objetivo
+      </label>
+
+      <input
+        id="courseTarget"
+        type="number"
+        min="1"
+        max="7"
+        step=".1"
+        value="4.0"
+      >
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="addCourse()"
+    >
+
+      Guardar ramo
+
+    </button>
+
+  `);
+
+}
+
+
+function addCourse() {
+
+  const name =
+    $("#courseName")
+      .value
+      .trim();
+
+
+  if (!name)
+    return;
+
+
+  state.courses.push({
+
+    id: uid(),
+
+    name,
+
+    color: "#3977f6",
+
+    grades: [],
+
+    target:
+      Number(
+        $("#courseTarget")
+          .value ||
+        4
+      )
+
+  });
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+}
+
+
+/* =========================================================
+   ABRIR RAMO
+========================================================= */
+
+function openCourse(id) {
+
+  const course =
+    state.courses.find(
+      course =>
+        course.id === id
+    );
+
+
+  if (!course)
+    return;
+
+
+  const used =
+    course.grades.reduce(
+
+      (total, grade) =>
+        total +
+        Number(
+          grade.weight
+        ),
+
+      0
+
+    );
+
+
+  const remaining =
+    Math.max(
+      0,
+      100 - used
+    );
+
+
+  const required =
+    remaining
+      ? requiredGrade(
+          course,
+          remaining
+        )
+      : null;
+
+
+  openSheet(`
+
+    <h2>
+
+      ${esc(course.name)}
+
+    </h2>
+
+
+    <div class="kpi-row">
+
+
+      <div class="kpi">
+
+        <strong>
+
+          ${
+            courseAverage(course)
+
+            ?
+
+            courseAverage(course)
+              .toFixed(2)
+
+            :
+
+            "—"
+          }
+
+        </strong>
+
+        <small>
+          promedio
+        </small>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <strong>
+
+          ${used}%
+
+        </strong>
+
+        <small>
+          registrado
+        </small>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <strong>
+
+          ${
+            required
+              ? required.toFixed(2)
+              : "—"
+          }
+
+        </strong>
+
+        <small>
+          requiere
+        </small>
+
+      </div>
+
+    </div>
+
+
+    ${
+      course.grades
+        .map(grade => `
+
+          <div class="item">
+
+            <div class="item-main">
+
+              <b>
+
+                ${esc(grade.name)}
+
+              </b>
+
+              <div class="item-sub">
+
+                ${grade.weight}%
+
+              </div>
+
+            </div>
+
+
+            <b>
+
+              ${grade.grade}
+
+            </b>
+
+          </div>
+
+        `)
+        .join("")
+    }
+
+
+    <div class="field">
+
+      <label>
+        Evaluación
+      </label>
+
+      <input
+        id="gradeName"
+        placeholder="Prueba 2"
+      >
+
+    </div>
+
+
+    <div class="grid">
+
+
+      <div class="field">
+
+        <label>
+          Nota
+        </label>
+
+        <input
+          id="gradeValue"
+          type="number"
+          min="1"
+          max="7"
+          step=".1"
+        >
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          Peso %
+        </label>
+
+        <input
+          id="gradeWeight"
+          type="number"
+          min="1"
+          max="100"
+        >
+
+      </div>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="
+        addGrade('${course.id}')
+      "
+    >
+
+      Añadir nota
+
+    </button>
+
+  `);
+
+}
+
+
+/* =========================================================
+   AÑADIR NOTA
+========================================================= */
+
+function addGrade(id) {
+
+  const course =
+    state.courses.find(
+      course =>
+        course.id === id
+    );
+
+
+  const name =
+    $("#gradeName")
+      .value
+      .trim();
+
+
+  const grade =
+    Number(
+      $("#gradeValue")
+        .value
+    );
+
+
+  const weight =
+    Number(
+      $("#gradeWeight")
+        .value
+    );
+
+
+  if (
+    !course ||
+    !name ||
+    !grade ||
+    !weight
+  )
+    return;
+
+
+  course.grades.push({
+
+    name,
+
+    grade,
+
+    weight
+
+  });
+
+
+  save();
+
+  openCourse(id);
+
+}
+
+
+/* =========================================================
+   OBJETIVOS
+========================================================= */
+
+function openAddGoal() {
+
+  openSheet(`
+
+    <h2>
+      Nuevo objetivo
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Objetivo
+      </label>
+
+      <input
+        id="goalName"
+        placeholder="
+          Ej. Ahorrar $500.000
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Meta numérica
+      </label>
+
+      <input
+        id="goalTarget"
+        type="number"
+        value="100"
+      >
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="addGoal()"
+    >
+
+      Guardar
+
+    </button>
+
+  `);
+
+}
+
+
+function addGoal() {
+
+  const name =
+    $("#goalName")
+      .value
+      .trim();
+
+
+  if (!name)
+    return;
+
+
+  state.goals.push({
+
+    id: uid(),
+
+    name,
+
+    progress: 0,
+
+    target:
+      Number(
+        $("#goalTarget")
+          .value ||
+        100
+      )
+
+  });
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+}
+
+
+function bumpGoal(
+  id,
+  amount
+) {
+
+  const goal =
+    state.goals.find(
+      goal =>
+        goal.id === id
+    );
+
+
+  if (!goal)
+    return;
+
+
+  goal.progress =
+    Math.min(
+
+      goal.target,
+
+      goal.progress +
+      amount
+
+    );
+
+
+  save();
+
+  render();
+
+
+  if (
+    goal.progress >=
+    goal.target
+  ) {
+
+    addXP(
+      250,
+      "Objetivo completado"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   INBOX
+========================================================= */
+
+function addInbox() {
+
+  const text =
+    $("#inboxText")
+      .value
+      .trim();
+
+
+  if (!text)
+    return;
+
+
+  state.inbox.unshift({
+
+    id: uid(),
+
+    text,
+
+    date:
+      new Date()
+        .toLocaleString(
+          "es-CL"
+        )
+
+  });
+
+
+  save();
+
+  renderPlan();
+
+}
+
+
+function inboxToTask(id) {
+
+  const item =
+    state.inbox.find(
+      item =>
+        item.id === id
+    );
+
+
+  if (!item)
+    return;
+
+
+  state.tasks.unshift({
+
+    id: uid(),
+
+    title:
+      item.text,
+
+    due:
+      todayISO(),
+
+    done:
+      false,
+
+    priority:
+      "Media",
+
+    xp:
+      20
+
+  });
+
+
+  state.inbox =
+    state.inbox.filter(
+      item =>
+        item.id !== id
+    );
+
+
+  save();
+
+  renderPlan();
+
+
+  toast(
+    "Convertido en tarea"
+  );
+
+}
+
+
+function goInbox() {
+
+  closeSheet();
+
+  route = "plan";
+
+  planTab = "inbox";
+
+  render();
+
+}
+
+
+/* =========================================================
+   FOCUS MODE
+========================================================= */
+
+let focusInterval =
+  null;
+
+
+function getFocusSeconds() {
+
+  if (
+    state.focus.running &&
+    state.focus.lastStart
+  ) {
+
+    return (
+
+      state.focus.seconds +
+
+      Math.floor(
+
+        (
+          Date.now() -
+          state.focus.lastStart
+        )
+
+        /
+
+        1000
+
+      )
+
+    );
+
+  }
+
+
+  return state.focus.seconds;
+
+}
+
+
+function formatTime(seconds) {
+
+  const hours =
+    Math.floor(
+      seconds / 3600
+    );
+
+
+  const minutes =
+    Math.floor(
+      (
+        seconds % 3600
+      ) /
+      60
+    );
+
+
+  const secs =
+    seconds % 60;
+
+
+  if (hours) {
+
+    return `
+
+      ${String(hours).padStart(2, "0")}:
+
+      ${String(minutes).padStart(2, "0")}:
+
+      ${String(secs).padStart(2, "0")}
+
+    `.replace(/\s/g, "");
+
+  }
+
+
+  return `
+
+    ${String(minutes).padStart(2, "0")}:
+
+    ${String(secs).padStart(2, "0")}
+
+  `.replace(/\s/g, "");
+
+}
+
+
+function openFocus() {
+
+  openSheet(`
+
+    <h2>
+      Focus Mode
+    </h2>
+
+
+    <div
+      class="focus-clock"
+      id="focusClock"
+    >
+
+      ${
+        formatTime(
+          getFocusSeconds()
+        )
+      }
+
+    </div>
+
+
+    <div class="center">
+
+      <div
+        class="btn-row"
+        style="
+          justify-content:center
+        "
+      >
+
+        <button
+          type="button"
+          class="btn"
+          onclick="
+            toggleFocus()
+          "
+        >
+
+          ${
+            state.focus.running
+              ? "Pausar"
+              : "Iniciar"
+          }
+
+        </button>
+
+
+        <button
+          type="button"
+          class="btn secondary"
+          onclick="
+            finishFocus()
+          "
+        >
+
+          Finalizar sesión
+
+        </button>
+
+      </div>
+
+    </div>
+
+  `);
+
+
+  clearInterval(
+    focusInterval
+  );
+
+
+  focusInterval =
+    setInterval(
+      () => {
+
+        const clock =
+          $("#focusClock");
+
+
+        if (clock) {
+
+          clock.textContent =
+            formatTime(
+              getFocusSeconds()
+            );
+
+        }
+
+      },
+
+      1000
+
+    );
+
+}
+
+
+function toggleFocus() {
+
+  if (
+    state.focus.running
+  ) {
+
+    state.focus.seconds =
+      getFocusSeconds();
+
+
+    state.focus.lastStart =
+      null;
+
+
+    state.focus.running =
+      false;
+
+  }
+
+  else {
+
+    state.focus.lastStart =
+      Date.now();
+
+
+    state.focus.running =
+      true;
+
+  }
+
+
+  save();
+
+  openFocus();
+
+}
+
+
+function finishFocus() {
+
+  const seconds =
+    getFocusSeconds();
+
+
+  const minutes =
+    Math.max(
+
+      1,
+
+      Math.round(
+        seconds /
+        60
+      )
+
+    );
+
+
+  state.focus = {
+
+    seconds: 0,
+
+    running: false,
+
+    lastStart: null,
+
+    totalToday:
+
+      state.focus.totalToday +
+      minutes
+
+  };
+
+
+  state.history
+    .studyMinutes +=
+    minutes;
+
+
+  addXP(
+
+    Math.min(
+      120,
+      minutes
+    ),
+
+    `${minutes} min de Focus`
+
+  );
+
+
+  save();
+
+
+  clearInterval(
+    focusInterval
+  );
+
+
+  closeSheet();
+
+  render();
+
+}
+
+
+/* =========================================================
+   FITNESS
+========================================================= */
+
+function openWorkout() {
+
+  openSheet(`
+
+    <h2>
+      Registrar entrenamiento
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Tipo
+      </label>
+
+      <input
+        id="workoutType"
+        placeholder="
+          Push / Pull / Pierna / Full body
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Duración (min)
+      </label>
+
+      <input
+        id="workoutMin"
+        type="number"
+        value="60"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Notas
+      </label>
+
+      <textarea
+        id="workoutNotes"
+        placeholder="
+          Ejercicios,
+          pesos,
+          sensaciones...
+        "
+      ></textarea>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="
+        saveWorkout()
+      "
+    >
+
+      Guardar entrenamiento
+
+    </button>
+
+  `);
+
+}
+
+
+function saveWorkout() {
+
+  const type =
+    $("#workoutType")
+      .value
+      .trim()
+
+    ||
+
+    "Entrenamiento";
+
+
+  const minutes =
+    Number(
+      $("#workoutMin")
+        .value ||
+      60
+    );
+
+
+  state.fitness
+    .workouts
+    .unshift({
+
+      id: uid(),
+
+      date:
+        new Date()
+          .toISOString(),
+
+      type,
+
+      mins:
+        minutes,
+
+      notes:
+        $("#workoutNotes")
+          .value
+
+    });
+
+
+  state.history
+    .workouts++;
+
+
+  addXP(
+    80,
+    "Entrenamiento"
+  );
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+}
+
+
+/* =========================================================
+   FINANZAS
+========================================================= */
+
+function openExpense() {
+
+  openSheet(`
+
+    <h2>
+      Registrar gasto
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Monto
+      </label>
+
+      <input
+        id="expenseAmount"
+        type="number"
+        inputmode="numeric"
+        placeholder="5000"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Categoría
+      </label>
+
+
+      <select
+        id="expenseCat"
+      >
+
+        <option>
+          Comida
+        </option>
+
+        <option>
+          Transporte
+        </option>
+
+        <option>
+          Universidad
+        </option>
+
+        <option>
+          Gym
+        </option>
+
+        <option>
+          Ocio
+        </option>
+
+        <option>
+          Compras
+        </option>
+
+        <option>
+          Otro
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Descripción
+      </label>
+
+      <input
+        id="expenseDesc"
+        placeholder="Opcional"
+      >
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="
+        saveExpense()
+      "
+    >
+
+      Guardar gasto
+
+    </button>
+
+  `);
+
+}
+
+
+function saveExpense() {
+
+  const amount =
+    Number(
+      $("#expenseAmount")
+        .value
+    );
+
+
+  if (!amount)
+    return;
+
+
+  state.finance
+    .entries
+    .unshift({
+
+      id: uid(),
+
+      amount,
+
+      category:
+        $("#expenseCat")
+          .value,
+
+      description:
+        $("#expenseDesc")
+          .value,
+
+      date:
+        new Date()
+          .toISOString()
+
+    });
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+
+  toast(
+    "Gasto guardado"
+  );
+
+}
+
+
+function monthSpent() {
+
+  const now =
+    new Date();
+
+
+  const year =
+    now.getFullYear();
+
+
+  const month =
+    now.getMonth();
+
+
+  return state.finance
+    .entries
+    .filter(
+      entry => {
+
+        const date =
+          new Date(
+            entry.date
+          );
+
+
+        return (
+
+          date.getFullYear() ===
+          year
+
+          &&
+
+          date.getMonth() ===
+          month
+
+        );
+
+      }
+    )
+    .reduce(
+
+      (total, entry) =>
+        total +
+        Number(
+          entry.amount
+        ),
+
+      0
+
+    );
+
+}
+
+
+/* =========================================================
+   WIDGETS
+========================================================= */
+
+function openWidgetEditor() {
+
+  openSheet(`
+
+    <h2>
+      Personalizar Inicio
+    </h2>
+
+
+    <p class="muted">
+
+      Activa u oculta
+      tarjetas del dashboard.
+
+    </p>
+
+
+    ${
+      Object.entries(
+        state.widgets
+      )
+      .map(
+        ([key, enabled]) => `
+
+          <div class="widget-config">
+
+            <span>
+
+              ${widgetName(key)}
+
+            </span>
+
+
+            <button
+              type="button"
+              class="
+                toggle
+                ${
+                  enabled
+                    ? "on"
+                    : ""
+                }
+              "
+              onclick="
+                toggleWidget(
+                  '${key}'
+                )
+              "
+            ></button>
+
+          </div>
+
+        `
+      )
+      .join("")
+    }
+
+  `);
+
+}
+
+
+function widgetName(key) {
+
+  return (
+
+    {
+
+      next:
+        "Próximo evento",
+
+      tasks:
+        "Tareas",
+
+      habits:
+        "Hábitos",
+
+      water:
+        "Agua",
+
+      focus:
+        "Focus",
+
+      money:
+        "Dinero",
+
+      fitness:
+        "Fitness",
+
+      goals:
+        "Objetivos",
+
+      university:
+        "Universidad",
+
+      score:
+        "NXO Score"
+
+    }[key]
+
+    ||
+
+    key
+
+  );
+
+}
+
+
+function toggleWidget(key) {
+
+  state.widgets[key] =
+    !state.widgets[key];
+
+
+  save();
+
+  openWidgetEditor();
+
+  renderHome();
+
+}
+
+
+/* =========================================================
+   TEMAS / PERSONALIZACIÓN
+========================================================= */
+
+function openThemes() {
+
+  openSheet(`
+
+    <h2>
+      Temas NXO
+    </h2>
+
+
+    <div class="theme-grid">
+
+      ${
+        Object.entries(
+          themes
+        )
+        .map(
+          ([id, theme]) => {
+
+            const unlocked =
+              state.profile.level >=
+              theme.level;
+
+
+            const accent =
+              theme.vars[
+                "--accent"
+              ];
+
+
+            const background =
+              theme.vars[
+                "--bg"
+              ];
+
+
+            return `
+
+              <button
+                type="button"
+                class="theme-card"
+                onclick="
+                  ${
+                    unlocked
+
+                    ?
+
+                    `setTheme('${id}')`
+
+                    :
+
+                    `toast(
+                      'Se desbloquea en nivel ${theme.level}'
+                    )`
+                  }
+                "
+              >
+
+                <div
+                  class="theme-preview"
+                  style="
+                    background:
+                    linear-gradient(
+                      135deg,
+                      ${background},
+                      ${accent}
+                    )
+                  "
+                ></div>
+
+
+                <b>
+
+                  ${theme.name}
+
+                </b>
+
+
+                <div class="item-sub">
+
+                  ${
+                    unlocked
+
+                    ?
+
+                    "Disponible"
+
+                    :
+
+                    `🔒 Nivel ${theme.level}`
+                  }
+
+                </div>
+
+              </button>
+
+            `;
+
+          }
+        )
+        .join("")
+      }
+
+    </div>
+
+  `);
+
+}
+
+
+function setTheme(id) {
+
+  state.profile.theme =
+    id;
+
+
+  save();
+
+  applyTheme();
+
+  openThemes();
+
+  render();
+
+}
+
+
+/* =========================================================
+   EDITAR PERFIL
+========================================================= */
+
+function openProfileEdit() {
+
+  openSheet(`
+
+    <h2>
+      Editar perfil
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Nombre
+      </label>
+
+      <input
+        id="profileName"
+        value="
+          ${escAttr(
+            state.profile.name
+          )}
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Avatar / emoji
+      </label>
+
+      <input
+        id="profileAvatar"
+        value="
+          ${escAttr(
+            state.profile.avatar
+          )}
+        "
+      >
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      onclick="
+        saveProfile()
+      "
+    >
+
+      Guardar
+
+    </button>
+
+  `);
+
+}
+
+
+function saveProfile() {
+
+  state.profile.name =
+
+    $("#profileName")
+      .value
+      .trim()
+
+    ||
+
+    "Usuario";
+
+
+  state.profile.avatar =
+
+    $("#profileAvatar")
+      .value
+
+    ||
+
+    "🧑‍🚀";
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+}
+
+
+/* =========================================================
+   CONFIGURACIÓN
+========================================================= */
+
+function openSettings() {
+
+  openSheet(`
+
+    <h2>
+      Configuración
+    </h2>
+
+
+    <div class="field">
+
+      <label>
+        Meta diaria de agua (ml)
+      </label>
+
+      <input
+        id="setWater"
+        type="number"
+        value="
+          ${
+            state.settings
+              .waterGoal
+          }
+        "
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Presupuesto mensual ($)
+      </label>
+
+      <input
+        id="setBudget"
+        type="number"
+        value="
+          ${
+            state.finance
+              .monthlyBudget
+          }
+        "
+      >
+
+    </div>
+
+
+    <div class="widget-config">
+
+      <span>
+        Animaciones
+      </span>
+
+
+      <button
+        type="button"
+        class="
+          toggle
+          ${
+            state.settings
+              .animations
+              ? "on"
+              : ""
+          }
+        "
+        onclick="
+          state.settings.animations =
+          !state.settings.animations;
+
+          save();
+
+          openSettings();
+        "
+      ></button>
+
+    </div>
+
+
+    <div class="widget-config">
+
+      <span>
+        Sonidos
+      </span>
+
+
+      <button
+        type="button"
+        class="
+          toggle
+          ${
+            state.settings
+              .sounds
+              ? "on"
+              : ""
+          }
+        "
+        onclick="
+          state.settings.sounds =
+          !state.settings.sounds;
+
+          save();
+
+          openSettings();
+        "
+      ></button>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="btn"
+      style="margin-top:14px"
+      onclick="
+        saveSettings()
+      "
+    >
+
+      Guardar configuración
+
+    </button>
+
+
+    <p
+      class="muted"
+      style="margin-top:18px"
+    >
+
+      NXO v1.0
+      ·
+      PWA local-first
+
+    </p>
+
+  `);
+
+}
+
+
+function saveSettings() {
+
+  state.settings.waterGoal =
+    Number(
+      $("#setWater")
+        .value ||
+      2500
+    );
+
+
+  state.finance.monthlyBudget =
+    Number(
+      $("#setBudget")
+        .value ||
+      200000
+    );
+
+
+  save();
+
+  closeSheet();
+
+  render();
+
+
+  toast(
+    "Configuración guardada"
+  );
+
+}
+
+
+/* =========================================================
+   NOTIFICACIONES
+========================================================= */
+
+async function enableNotifications() {
+
+  if (
+    !(
+      "Notification"
+      in window
+    )
+  ) {
+
+    toast(
+      "Este navegador no admite notificaciones web"
+    );
+
+    return;
+
+  }
+
+
+  const permission =
+    await Notification
+      .requestPermission();
+
+
+  state.settings
+    .notifications =
+    permission ===
+    "granted";
+
+
+  save();
+
+
+  toast(
+
+    permission ===
+    "granted"
+
+      ?
+
+      "Notificaciones activadas"
+
+      :
+
+      "Permiso no concedido"
+
+  );
+
+}
+
+
+async function testNotification() {
+
+  if (
+    Notification.permission !==
+    "granted"
+  ) {
+
+    await enableNotifications();
+
+
+    if (
+      Notification.permission !==
+      "granted"
+    )
+      return;
+
+  }
+
+
+  if (
+    "serviceWorker"
+    in navigator
+  ) {
+
+    const registration =
+      await navigator
+        .serviceWorker
+        .ready;
+
+
+    registration
+      .showNotification(
+
+        "NXO",
+
+        {
+
+          body:
+            "Todo listo. Las notificaciones de NXO funcionan.",
+
+          icon:
+            "icons/icon-192.png",
+
+          badge:
+            "icons/icon-192.png",
+
+          tag:
+            "nxo-test"
+
+        }
+
+      );
+
+  }
+
+  else {
+
+    new Notification(
+
+      "NXO",
+
+      {
+
+        body:
+          "Notificación de prueba"
+
+      }
+
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   BACKUPS
+========================================================= */
+
+function exportBackup() {
+
+  const blob =
+    new Blob(
+
+      [
+        JSON.stringify(
+          state,
+          null,
+          2
+        )
+      ],
+
+      {
+        type:
+          "application/json"
+      }
+
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  link.download =
+    `NXO-backup-${todayISO()}.json`;
+
+
+  link.click();
+
+
+  URL.revokeObjectURL(
+    link.href
+  );
+
+
+  toast(
+    "Backup exportado"
+  );
+
+}
+
+
+/* =========================================================
+   IMPORTAR BACKUP
+========================================================= */
+
+$("#importFile")
+  ?.addEventListener(
+
+    "change",
+
+    async event => {
+
+      const file =
+        event.target.files[0];
+
+
+      if (!file)
+        return;
+
+
+      try {
+
+        const data =
+          JSON.parse(
+            await file.text()
+          );
+
+
+        state =
+          data;
+
+
+        save();
+
+        render();
+
+
+        toast(
+          "Backup restaurado"
+        );
+
+      }
+
+      catch {
+
+        toast(
+          "Archivo no válido"
+        );
+
+      }
+
+    }
+
+  );
+
+
+/* =========================================================
+   RESTABLECER NXO
+========================================================= */
+
+function resetNXO() {
+
+  const confirmed =
+    confirm(
+
+      "¿Seguro? Se borrarán todos los datos locales de NXO."
+
+    );
+
+
+  if (!confirmed)
+    return;
+
+
+  localStorage
+    .removeItem(
+      DB_KEY
+    );
+
+
+  state =
+    fresh();
+
+
+  save();
+
+  render();
+
+
+  toast(
+    "NXO restablecido"
+  );
+
+}
+
+
+/* =========================================================
+   PDF
+========================================================= */
+
+async function generatePDF() {
+
+  if (
+    !window.jspdf?.jsPDF
+  ) {
+
+    toast(
+
+      "No se pudo cargar el generador PDF. Usa Imprimir / Guardar PDF."
+
+    );
+
+    return;
+
+  }
+
+
+  const {
+    jsPDF
+  } =
+    window.jspdf;
+
+
+  const documentPDF =
+    new jsPDF();
+
+
+  let y =
+    18;
+
+
+  const line = (
+
+    text,
+
+    size = 11,
+
+    bold = false
+
+  ) => {
+
+    documentPDF
+      .setFontSize(
+        size
+      );
+
+
+    documentPDF
+      .setFont(
+
+        "helvetica",
+
+        bold
+          ? "bold"
+          : "normal"
+
+      );
+
+
+    documentPDF
+      .text(
+
+        String(text),
+
+        15,
+
+        y
+
+      );
+
+
+    y +=
+      size * 0.55 +
+      3;
+
+
+    if (
+      y > 280
+    ) {
+
+      documentPDF
+        .addPage();
+
+
+      y =
+        18;
+
+    }
+
+  };
+
+
+  line(
+
+    "NXO · Informe de progreso",
+
+    20,
+
+    true
+
+  );
+
+
+  line(
+
+    new Intl.DateTimeFormat(
+
+      "es-CL",
+
+      {
+        dateStyle:
+          "long"
+      }
+
+    )
+      .format(
+        new Date()
+      ),
+
+    10
+
+  );
+
+
+  y += 3;
+
+
+  line(
+
+    `Usuario: ${state.profile.name}`,
+
+    12,
+
+    true
+
+  );
+
+
+  line(
+
+    `Nivel ${state.profile.level} · ${state.profile.xp} XP · NXO Score ${nxoScore()}/100`
+
+  );
+
+
+  y += 4;
+
+
+  line(
+    "Resumen",
+    15,
+    true
+  );
+
+
+  line(
+
+    `Tareas completadas: ${state.history.completedTasks}`
+
+  );
+
+
+  line(
+
+    `Horas de estudio: ${(state.history.studyMinutes / 60).toFixed(1)}`
+
+  );
+
+
+  line(
+
+    `Entrenamientos: ${state.history.workouts}`
+
+  );
+
+
+  line(
+
+    `Hábitos completados: ${state.history.habitsCompleted}`
+
+  );
+
+
+  line(
+
+    `Agua hoy: ${state.water.ml} ml / ${state.settings.waterGoal} ml`
+
+  );
+
+
+  line(
+
+    `Gasto del mes: $${monthSpent().toLocaleString("es-CL")}`
+
+  );
+
+
+  y += 4;
+
+
+  line(
+    "Universidad",
+    15,
+    true
+  );
+
+
+  state.courses
+    .forEach(
+      course => {
+
+        line(
+
+          `${course.name}: ${
+            courseAverage(course)
+
+            ?
+
+            courseAverage(course)
+              .toFixed(2)
+
+            :
+
+            "sin promedio"
+          } (${course.grades.length} evaluaciones)`
+
+        );
+
+      }
+    );
+
+
+  y += 4;
+
+
+  line(
+    "Objetivos",
+    15,
+    true
+  );
+
+
+  state.goals
+    .forEach(
+      goal => {
+
+        line(
+
+          `${goal.name}: ${goal.progress}/${goal.target}`
+
+        );
+
+      }
+    );
+
+
+  y += 4;
+
+
+  line(
+    "Hábitos",
+    15,
+    true
+  );
+
+
+  state.habits
+    .forEach(
+      habit => {
+
+        line(
+
+          `${habit.icon} ${habit.name}: racha ${habit.streak || 0} días`
+
+        );
+
+      }
+    );
+
+
+  y += 5;
+
+
+  line(
+    "Generado por NXO",
+    9
+  );
+
+
+  documentPDF
+    .save(
+
+      `NXO-Progreso-${todayISO()}.pdf`
+
+    );
+
+}
+
+
+/* =========================================================
+   SEGURIDAD HTML
+========================================================= */
+
+function esc(
+  string = ""
+) {
+
+  return String(
+    string
+  )
+  .replace(
+
+    /[&<>"']/g,
+
+    character => (
+
+      {
+
+        "&":
+          "&amp;",
+
+        "<":
+          "&lt;",
+
+        ">":
+          "&gt;",
+
+        '"':
+          "&quot;",
+
+        "'":
+          "&#039;"
+
+      }[character]
+
+    )
+
+  );
+
+}
+
+
+function escAttr(
+  string = ""
+) {
+
+  return esc(
+    string
+  );
+
+}
+
+
+/* =========================================================
+   EVENTOS PRINCIPALES
+========================================================= */
+
+$$(".nav-item")
+  .forEach(
+    button => {
+
+      button.onclick =
+        () => {
+
+          go(
+            button.dataset.route
+          );
+
+        };
+
+    }
+  );
+
+
+$("#fab").onclick =
+  () => {
+
+    openQuickAdd();
+
+  };
+
+
+$("#openSettingsBtn").onclick =
+  () => {
+
+    openSettings();
+
+  };
+
+
+/* =========================================================
+   INICIO DE NXO
+========================================================= */
+
+window.addEventListener(
+
+  "load",
+
+  () => {
+
+
+    /* SERVICE WORKER */
+
+    if (
+      "serviceWorker"
+      in navigator
+    ) {
+
+      navigator
+        .serviceWorker
+        .register(
+          "sw.js"
+        )
+        .catch(
+          () => {}
+        );
+
+    }
+
+
+    /* TEMA */
+
+    applyTheme();
+
+
+    /* HEADER */
+
+    renderHeader();
+
+
+    /* NIVEL */
+
+    syncLevel();
+
+
+    /* APP */
+
+    render();
+
+  }
+
+);
+
+
+/* =========================================================
+   CUANDO NXO VUELVE A ESTAR ACTIVA
+========================================================= */
+
+document.addEventListener(
+
+  "visibilitychange",
+
+  () => {
+
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+
+      renderHeader();
+
+    }
+
+  }
+
+);
